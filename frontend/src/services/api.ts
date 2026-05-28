@@ -23,6 +23,7 @@ export interface Tournament {
   currentRound: number
   status: 'DRAFT' | 'IN_PROGRESS' | 'FINISHED'
   createdAt: string
+  shareCode?: string
 }
 
 export interface TournamentPlayer {
@@ -65,6 +66,8 @@ export const PlayerService = {
 export const TournamentService = {
   getAll: () => api.get<Tournament[]>('/tournaments').then(r => r.data),
   getById: (id: string) => api.get<Tournament>(`/tournaments/${id}`).then(r => r.data),
+  getByShareCode: (code: string) => 
+    api.get<Tournament>(`/tournaments/share/${code}`).then(r => r.data),
   create: (name: string, totalRounds: number) => 
     api.post<Tournament>('/tournaments', { name, totalRounds }).then(r => r.data),
   registerPlayer: (tournamentId: string, playerId: string) => 

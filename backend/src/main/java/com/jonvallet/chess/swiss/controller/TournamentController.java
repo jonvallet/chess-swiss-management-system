@@ -53,22 +53,22 @@ public class TournamentController {
 
     @PostMapping("/tournaments")
     public ResponseEntity<Tournament> createTournament(@RequestBody CreateTournamentRequest request) {
-        if (request.getName() == null || request.getName().trim().isEmpty()) {
+        try {
+            Tournament tournament = tournamentService.createTournament(request);
+            return ResponseEntity.ok(tournament);
+        } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().build();
         }
-        if (request.getTotalRounds() == null || request.getTotalRounds() <= 0) {
-            return ResponseEntity.badRequest().build();
+    }
+
+    @GetMapping("/tournaments/share/{code}")
+    public ResponseEntity<Tournament> getTournamentByShareCode(@PathVariable String code) {
+        try {
+            Tournament tournament = tournamentService.getTournamentByShareCode(code);
+            return ResponseEntity.ok(tournament);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.notFound().build();
         }
-
-        Tournament tournament = Tournament.builder()
-                .name(request.getName().trim())
-                .totalRounds(request.getTotalRounds())
-                .currentRound(0)
-                .status(TournamentStatus.DRAFT)
-                .createdAt(LocalDateTime.now())
-                .build();
-
-        return ResponseEntity.ok(tournamentRepository.save(tournament));
     }
 
     @PostMapping("/tournaments/{id}/register")
