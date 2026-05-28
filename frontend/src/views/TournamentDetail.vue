@@ -111,6 +111,18 @@ onMounted(() => {
 watch(tournamentId, () => {
   fetchData()
 })
+
+const copied = ref(false)
+
+const handleCopyInviteLink = () => {
+  if (!tournament.value?.shareCode) return
+  const link = `${window.location.origin}/join/${tournament.value.shareCode}`
+  navigator.clipboard.writeText(link)
+  copied.value = true
+  setTimeout(() => {
+    copied.value = false
+  }, 2000)
+}
 </script>
 
 <template>
@@ -139,6 +151,18 @@ watch(tournamentId, () => {
           </span>
         </div>
         <h2 class="text-2xl font-bold text-slate-900">{{ tournament.name }}</h2>
+        <div v-if="tournament.shareCode" class="mt-2 flex items-center gap-2 text-xs text-slate-500">
+          <span class="font-semibold uppercase tracking-wider">Invite Link:</span>
+          <span class="font-mono bg-slate-100 border border-slate-200 text-slate-700 px-2 py-0.5 rounded font-bold">
+            {{ tournament.shareCode }}
+          </span>
+          <Button 
+            :label="copied ? 'Copied!' : 'Copy Link'" 
+            :icon="copied ? 'pi pi-check' : 'pi pi-copy'"
+            class="p-button-text p-button-xs py-0.5 px-2 text-amber-600 hover:text-amber-700 font-bold border border-transparent hover:border-amber-200 hover:bg-amber-50 rounded"
+            @click="handleCopyInviteLink"
+          />
+        </div>
       </div>
 
       <!-- Action Button -->

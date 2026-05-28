@@ -28,16 +28,20 @@ public class Tournament {
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
+    @Column(name = "share_code", unique = true, length = 6)
+    private String shareCode;
+
     public Tournament() {
     }
 
-    public Tournament(UUID id, String name, Integer totalRounds, Integer currentRound, TournamentStatus status, LocalDateTime createdAt) {
+    public Tournament(UUID id, String name, Integer totalRounds, Integer currentRound, TournamentStatus status, LocalDateTime createdAt, String shareCode) {
         this.id = id;
         this.name = name;
         this.totalRounds = totalRounds;
         this.currentRound = currentRound;
         this.status = status;
         this.createdAt = createdAt;
+        this.shareCode = shareCode;
     }
 
     public static class Builder {
@@ -47,6 +51,7 @@ public class Tournament {
         private Integer currentRound = 0;
         private TournamentStatus status = TournamentStatus.DRAFT;
         private LocalDateTime createdAt = LocalDateTime.now();
+        private String shareCode;
 
         public Builder id(UUID id) { this.id = id; return this; }
         public Builder name(String name) { this.name = name; return this; }
@@ -54,9 +59,10 @@ public class Tournament {
         public Builder currentRound(Integer currentRound) { this.currentRound = currentRound; return this; }
         public Builder status(TournamentStatus status) { this.status = status; return this; }
         public Builder createdAt(LocalDateTime createdAt) { this.createdAt = createdAt; return this; }
+        public Builder shareCode(String shareCode) { this.shareCode = shareCode; return this; }
 
         public Tournament build() {
-            return new Tournament(id, name, totalRounds, currentRound, status, createdAt);
+            return new Tournament(id, name, totalRounds, currentRound, status, createdAt, shareCode);
         }
     }
 
@@ -82,4 +88,7 @@ public class Tournament {
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+
+    public String getShareCode() { return shareCode; }
+    public void setShareCode(String shareCode) { this.shareCode = shareCode; }
 }

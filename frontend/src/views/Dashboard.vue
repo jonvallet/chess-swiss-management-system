@@ -17,6 +17,32 @@ const tournamentName = ref('')
 const totalRounds = ref(5)
 const submitting = ref(false)
 
+const showJoinDialog = ref(false)
+const joinCode = ref('')
+const joining = ref(false)
+const joinError = ref('')
+
+const handleJoinByCode = async () => {
+  if (!joinCode.value.trim() || joinCode.value.trim().length !== 6) {
+    joinError.value = 'Please enter a valid 6-character code.'
+    return
+  }
+  joining.value = true
+  joinError.value = ''
+  try {
+    const upperCode = joinCode.value.trim().toUpperCase()
+    const t = await TournamentService.getByShareCode(upperCode)
+    showJoinDialog.value = false
+    joinCode.value = ''
+    router.push(`/join/${t.shareCode}`)
+  } catch (err) {
+    console.error('Error finding tournament:', err)
+    joinError.value = 'Tournament not found. Please verify the code.'
+  } finally {
+    joining.value = false
+  }
+}
+
 const fetchDashboardData = async () => {
   loading.value = true
   try {
@@ -122,12 +148,20 @@ onMounted(() => {
           <h2 class="text-xl font-bold text-slate-900 mb-1">Chess Tournaments</h2>
           <p class="text-sm text-slate-500">Manage all your local, Swiss-paired chess tournaments.</p>
         </div>
-        <Button 
-          label="Create Tournament" 
-          icon="pi pi-plus" 
-          class="bg-amber-500 hover:bg-amber-600 border-none text-slate-950 px-4 py-2.5 font-semibold text-sm rounded-lg"
-          @click="showCreateDialog = true" 
-        />
+        <div class="flex gap-2.5">
+          <Button 
+            label="Join Tournament" 
+            icon="pi pi-sign-in" 
+            class="p-button-outlined border-amber-500 text-amber-600 hover:bg-amber-50 px-4 py-2.5 font-semibold text-sm rounded-lg"
+            @click="showJoinDialog = true" 
+          />
+          <Button 
+            label="Create Tournament" 
+            icon="pi pi-plus" 
+            class="bg-amber-500 hover:bg-amber-600 border-none text-slate-950 px-4 py-2.5 font-semibold text-sm rounded-lg"
+            @click="showCreateDialog = true" 
+          />
+        </div>
       </div>
 
       <div v-if="loading" class="text-center py-12">
@@ -223,6 +257,45 @@ onMounted(() => {
             :loading="submitting"
             class="bg-amber-500 hover:bg-amber-600 border-none text-slate-950 font-semibold py-2 px-4 rounded-lg" 
             @click="handleCreateTournament" 
+          />
+        </div>
+      </template>
+    </Dialog>
+
+    <!-- Join Tournament Dialog -->
+    <Dialog 
+      v-model:visible="showJoinDialog" 
+      header="Join Tournament with Code" 
+      :modal="true" 
+      class="w-full max-w-sm bg-white border border-slate-200 rounded-xl overflow-hidden shadow-2xl"
+      contentClass="p-6 space-y-4"
+    >
+      <div class="flex flex-col gap-2">
+        <label for="joinCode" class="text-sm font-semibold text-slate-700">6-character Share Code</label>
+        <InputText 
+          id="joinCode" 
+          v-model="joinCode" 
+          placeholder="E.g., AB12CD" 
+          class="w-full px-3 py-2.5 border border-slate-300 rounded-lg text-slate-800 focus:ring-2 focus:ring-amber-400 outline-none uppercase font-mono text-center tracking-widest text-lg"
+          maxlength="6"
+          @keyup.enter="handleJoinByCode"
+        />
+        <p v-if="joinError" class="text-xs text-rose-600 font-semibold mt-1">{{ joinError }}</p>
+      </div>
+
+      <template #footer>
+        <div class="flex justify-end gap-3 mt-4 border-t border-slate-100 pt-4">
+          <Button 
+            label="Cancel" 
+            class="p-button-text text-slate-500 font-medium py-2 px-4 hover:bg-slate-100 rounded-lg" 
+            @click="showJoinDialog = false; joinCode = ''; joinError = ''" 
+          />
+          <Button 
+            label="Find & Join" 
+            icon="pi pi-sign-in" 
+            :loading="joining"
+            class="bg-amber-500 hover:bg-amber-600 border-none text-slate-950 font-semibold py-2 px-4 rounded-lg" 
+            @click="handleJoinByCode" 
           />
         </div>
       </template>

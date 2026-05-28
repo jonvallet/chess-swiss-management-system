@@ -13,11 +13,11 @@ java {
 }
 
 bootJar {
-    mainClass = 'com.chess.swiss.SwissManagementApplication'
+    mainClass = 'com.jonvallet.chess.swiss.SwissManagementApplication'
 }
 
 bootRun {
-    mainClass = 'com.chess.swiss.SwissManagementApplication'
+    mainClass = 'com.jonvallet.chess.swiss.SwissManagementApplication'
 }
 
 repositories {

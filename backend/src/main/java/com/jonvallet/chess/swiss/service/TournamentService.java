@@ -1,5 +1,6 @@
 package com.jonvallet.chess.swiss.service;
 
+import com.jonvallet.chess.swiss.dto.CreateTournamentRequest;
 import com.jonvallet.chess.swiss.dto.PlayerStandingDto;
 import com.jonvallet.chess.swiss.model.*;
 import com.jonvallet.chess.swiss.repository.MatchRepository;
@@ -10,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -32,6 +34,52 @@ public class TournamentService {
         this.tournamentPlayerRepository = tournamentPlayerRepository;
         this.matchRepository = matchRepository;
         this.swissPairingService = swissPairingService;
+    }
+
+    @Transactional
+    public Tournament createTournament(CreateTournamentRequest request) {
+        if (request.getName() == null || request.getName().trim().isEmpty()) {
+            throw new IllegalArgumentException("Tournament name cannot be empty");
+        }
+        if (request.getTotalRounds() == null || request.getTotalRounds() <= 0) {
+            throw new IllegalArgumentException("Total rounds must be greater than zero");
+        }
+
+        String shareCode = generateUniqueShareCode();
+
+        Tournament tournament = Tournament.builder()
+                .name(request.getName().trim())
+                .totalRounds(request.getTotalRounds())
+                .currentRound(0)
+                .status(TournamentStatus.DRAFT)
+                .createdAt(LocalDateTime.now())
+                .shareCode(shareCode)
+                .build();
+
+        return tournamentRepository.save(tournament);
+    }
+
+    public Tournament getTournamentByShareCode(String shareCode) {
+        return tournamentRepository.findByShareCode(shareCode)
+                .orElseThrow(() -> new IllegalArgumentException("Tournament not found with share code: " + shareCode));
+    }
+
+    private String generateUniqueShareCode() {
+        String code;
+        do {
+            code = generateShareCode();
+        } while (tournamentRepository.findByShareCode(code).isPresent());
+        return code;
+    }
+
+    private String generateShareCode() {
+        String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+        StringBuilder sb = new StringBuilder();
+        Random random = new Random();
+        for (int i = 0; i < 6; i++) {
+            sb.append(chars.charAt(random.nextInt(chars.length())));
+        }
+        return sb.toString();
     }
 
     @Transactional
