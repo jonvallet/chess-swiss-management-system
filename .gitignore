@@ -1,0 +1,50 @@
+# ==========================================
+# Chess Swiss Management System - .gitignore
+# ==========================================
+
+# --- System-specific files ---
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# --- IDEs and editors ---
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# --- Application logs ---
+*.log
+backend/backend.log
+frontend/frontend.log
+
+# ==========================================
+# Backend (Gradle & Java) ignores
+# ==========================================
+backend/.gradle/
+backend/build/
+backend/out/
+backend/.classpath
+backend/.project
+backend/.settings/
+backend/bin/
+
+# ==========================================
+# Frontend (Node & Vue) ignores
+# ==========================================
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+frontend/.pnpm-debug.log*
+frontend/.env.local
+frontend/.env.*.local
