@@ -11,6 +11,7 @@ import com.jonvallet.chess.swiss.model.TournamentStatus;
 import com.jonvallet.chess.swiss.repository.MatchRepository;
 import com.jonvallet.chess.swiss.repository.TournamentPlayerRepository;
 import com.jonvallet.chess.swiss.repository.TournamentRepository;
+import com.jonvallet.chess.swiss.security.TournamentAccessService;
 import com.jonvallet.chess.swiss.service.TournamentService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -21,22 +22,24 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api")
-@CrossOrigin(origins = "*")
 public class TournamentController {
 
     private final TournamentRepository tournamentRepository;
     private final TournamentPlayerRepository tournamentPlayerRepository;
     private final MatchRepository matchRepository;
     private final TournamentService tournamentService;
+    private final TournamentAccessService tournamentAccessService;
 
     public TournamentController(TournamentRepository tournamentRepository,
                                 TournamentPlayerRepository tournamentPlayerRepository,
                                 MatchRepository matchRepository,
-                                TournamentService tournamentService) {
+                                TournamentService tournamentService,
+                                TournamentAccessService tournamentAccessService) {
         this.tournamentRepository = tournamentRepository;
         this.tournamentPlayerRepository = tournamentPlayerRepository;
         this.matchRepository = matchRepository;
         this.tournamentService = tournamentService;
+        this.tournamentAccessService = tournamentAccessService;
     }
 
     @GetMapping("/tournaments")
@@ -46,6 +49,9 @@ public class TournamentController {
 
     @GetMapping("/tournaments/{id}")
     public ResponseEntity<Tournament> getTournamentById(@PathVariable UUID id) {
+        if (!tournamentAccessService.hasAccessToTournament(id)) {
+            return ResponseEntity.status(403).build();
+        }
         return tournamentRepository.findById(id)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
@@ -75,6 +81,9 @@ public class TournamentController {
     public ResponseEntity<TournamentPlayer> registerPlayer(
             @PathVariable UUID id,
             @RequestBody RegisterPlayerRequest request) {
+        if (!tournamentAccessService.hasAccessToTournament(id)) {
+            return ResponseEntity.status(403).build();
+        }
         try {
             TournamentPlayer tp = tournamentService.registerPlayer(id, request.getPlayerId());
             return ResponseEntity.ok(tp);
@@ -87,11 +96,17 @@ public class TournamentController {
 
     @GetMapping("/tournaments/{id}/players")
     public ResponseEntity<List<TournamentPlayer>> getRegisteredPlayers(@PathVariable UUID id) {
+        if (!tournamentAccessService.hasAccessToTournament(id)) {
+            return ResponseEntity.status(403).build();
+        }
         return ResponseEntity.ok(tournamentPlayerRepository.findByTournamentId(id));
     }
 
     @PostMapping("/tournaments/{id}/rounds/generate")
     public ResponseEntity<List<Match>> generateNextRound(@PathVariable UUID id) {
+        if (!tournamentAccessService.hasAccessToTournament(id)) {
+            return ResponseEntity.status(403).build();
+        }
         try {
             List<Match> matches = tournamentService.generateNextRound(id);
             return ResponseEntity.ok(matches);
@@ -106,11 +121,17 @@ public class TournamentController {
     public ResponseEntity<List<Match>> getRoundMatches(
             @PathVariable UUID id,
             @PathVariable Integer roundNum) {
+        if (!tournamentAccessService.hasAccessToTournament(id)) {
+            return ResponseEntity.status(403).build();
+        }
         return ResponseEntity.ok(matchRepository.findByTournamentIdAndRoundNumber(id, roundNum));
     }
 
     @GetMapping("/tournaments/{id}/matches")
     public ResponseEntity<List<Match>> getAllMatches(@PathVariable UUID id) {
+        if (!tournamentAccessService.hasAccessToTournament(id)) {
+            return ResponseEntity.status(403).build();
+        }
         return ResponseEntity.ok(matchRepository.findByTournamentId(id));
     }
 
@@ -118,9 +139,16 @@ public class TournamentController {
     public ResponseEntity<Match> submitMatchResult(
             @PathVariable UUID matchId,
             @RequestBody SubmitResultRequest request) {
+        Match match = matchRepository.findById(matchId).orElse(null);
+        if (match == null) {
+            return ResponseEntity.notFound().build();
+        }
+        if (!tournamentAccessService.hasAccessToTournament(match.getTournament().getId())) {
+            return ResponseEntity.status(403).build();
+        }
         try {
-            Match match = tournamentService.submitMatchResult(matchId, request.getResult());
-            return ResponseEntity.ok(match);
+            Match updatedMatch = tournamentService.submitMatchResult(matchId, request.getResult());
+            return ResponseEntity.ok(updatedMatch);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.notFound().build();
         } catch (IllegalStateException e) {
@@ -130,6 +158,9 @@ public class TournamentController {
 
     @GetMapping("/tournaments/{id}/standings")
     public ResponseEntity<List<PlayerStandingDto>> getStandings(@PathVariable UUID id) {
+        if (!tournamentAccessService.hasAccessToTournament(id)) {
+            return ResponseEntity.status(403).build();
+        }
         try {
             List<PlayerStandingDto> standings = tournamentService.getStandings(id);
             return ResponseEntity.ok(standings);

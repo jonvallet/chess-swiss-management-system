@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { TournamentService, PlayerService } from '../services/api'
+import { TournamentService, AuthService } from '../services/api'
+import { useAuthStore } from '../stores/auth'
 import type { Tournament } from '../services/api'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
@@ -9,6 +10,7 @@ import InputNumber from 'primevue/inputnumber'
 
 const route = useRoute()
 const router = useRouter()
+const authStore = useAuthStore()
 
 const code = route.params.code as string
 const tournament = ref<Tournament | null>(null)
@@ -43,20 +45,18 @@ const handleJoinTournament = async () => {
   submitting.value = true
   joinError.value = ''
   try {
-    // 1. Create a new player in the system
-    const newPlayer = await PlayerService.create(
+    const response = await AuthService.joinTournament(
+      tournament.value.id,
       playerName.value.trim(),
       playerRating.value || 1200
     )
 
-    // 2. Register the created player for the tournament
-    await TournamentService.registerPlayer(tournament.value.id, newPlayer.id)
+    authStore.setAuth(response.token, 'PLAYER', response.playerId, response.tournamentId)
 
-    // 3. Redirect user to the tournament detail page
     router.push(`/tournaments/${tournament.value.id}`)
   } catch (err: any) {
     console.error('Error joining tournament:', err)
-    joinError.value = err.response?.data?.message || 'Could not join tournament. Please try again.'
+    joinError.value = err.response?.data || 'Could not join tournament. Please try again.'
   } finally {
     submitting.value = false
   }

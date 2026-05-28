@@ -1,12 +1,35 @@
 import axios from 'axios'
 
-// Set up the default axios instance
 const api = axios.create({
   baseURL: '/api',
   headers: {
     'Content-Type': 'application/json'
   }
 })
+
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('auth_token')
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`
+  }
+  return config
+})
+
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401 || error.response?.status === 403) {
+      localStorage.removeItem('auth_token')
+      localStorage.removeItem('auth_role')
+      localStorage.removeItem('auth_player_id')
+      localStorage.removeItem('auth_tournament_id')
+      if (window.location.pathname !== '/login' && !window.location.pathname.startsWith('/join/')) {
+        window.location.href = '/login'
+      }
+    }
+    return Promise.reject(error)
+  }
+)
 
 // Types & Interfaces
 export interface Player {
@@ -55,12 +78,30 @@ export interface PlayerStanding {
   colorDifference: number
 }
 
+export interface LoginResponse {
+  token: string
+  role: string
+}
+
+export interface JoinTournamentResponse {
+  token: string
+  playerId: string
+  tournamentId: string
+}
+
 // API methods
 export const PlayerService = {
   getAll: () => api.get<Player[]>('/players').then(r => r.data),
   create: (name: string, rating: number) => 
     api.post<Player>('/players', { name, rating }).then(r => r.data),
   delete: (id: string) => api.delete(`/players/${id}`).then(r => r.data)
+}
+
+export const AuthService = {
+  login: (username: string, password: string) =>
+    api.post<LoginResponse>('/auth/login', { username, password }).then(r => r.data),
+  joinTournament: (tournamentId: string, playerName: string, playerRating: number) =>
+    api.post<JoinTournamentResponse>(`/tournaments/${tournamentId}/join`, { playerName, playerRating }).then(r => r.data)
 }
 
 export const TournamentService = {
