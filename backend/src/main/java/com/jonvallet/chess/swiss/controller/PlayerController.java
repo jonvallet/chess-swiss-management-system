@@ -12,7 +12,6 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/players")
-@CrossOrigin(origins = "*")
 public class PlayerController {
 
     private final PlayerRepository playerRepository;
