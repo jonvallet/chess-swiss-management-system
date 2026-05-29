@@ -10,8 +10,7 @@ export const useAuthStore = defineStore('auth', () => {
   const isAuthenticated = computed(() => !!token.value)
   const isAdmin = computed(() => role.value === 'ADMIN')
   const isPlayer = computed(() => role.value === 'PLAYER')
-  const isViewer = computed(() => role.value === 'VIEWER')
-  const canEdit = computed(() => role.value === 'ADMIN' || role.value === 'PLAYER')
+  const canEdit = computed(() => role.value === 'ADMIN' || role.value === 'PLAYER' || role.value === 'CONTROLLER')
 
   function setAuth(newToken: string, newRole: string, newPlayerId?: string, newTournamentId?: string) {
     token.value = newToken
@@ -45,7 +44,6 @@ export const useAuthStore = defineStore('auth', () => {
     isAuthenticated,
     isAdmin,
     isPlayer,
-    isViewer,
     canEdit,
     setAuth,
     logout

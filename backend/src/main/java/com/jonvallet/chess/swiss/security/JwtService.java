@@ -43,10 +43,10 @@ public class JwtService {
                 .compact();
     }
 
-    public String generateViewerToken(UUID tournamentId) {
+    public String generateControllerToken(UUID tournamentId) {
         return Jwts.builder()
                 .subject(tournamentId.toString())
-                .claim("role", "VIEWER")
+                .claim("role", "CONTROLLER")
                 .claim("tournamentId", tournamentId.toString())
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + appProperties.getJwt().getExpirationMs()))

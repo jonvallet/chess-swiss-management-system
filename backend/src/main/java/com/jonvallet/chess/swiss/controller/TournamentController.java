@@ -1,5 +1,6 @@
 package com.jonvallet.chess.swiss.controller;
 
+import com.jonvallet.chess.swiss.dto.CreateAndRegisterPlayerRequest;
 import com.jonvallet.chess.swiss.dto.CreateTournamentRequest;
 import com.jonvallet.chess.swiss.dto.PlayerStandingDto;
 import com.jonvallet.chess.swiss.dto.RegisterPlayerRequest;
@@ -92,6 +93,47 @@ public class TournamentController {
             return ResponseEntity.notFound().build();
         } catch (IllegalStateException e) {
             return ResponseEntity.badRequest().body(null);
+        }
+    }
+
+    @PostMapping("/tournaments/{id}/players/create")
+    public ResponseEntity<TournamentPlayer> createAndRegisterPlayer(
+            @PathVariable UUID id,
+            @RequestBody CreateAndRegisterPlayerRequest request) {
+        if (!tournamentAccessService.hasAccessToTournament(id)) {
+            return ResponseEntity.status(403).build();
+        }
+        try {
+            TournamentPlayer tp = tournamentService.createAndRegisterPlayer(id, request.getName(), request.getRating());
+            return ResponseEntity.ok(tp);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().build();
+        } catch (IllegalStateException e) {
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
+    @DeleteMapping("/tournaments/{id}")
+    public ResponseEntity<?> deleteTournament(@PathVariable UUID id) {
+        if (!tournamentAccessService.isAdmin()) {
+            return ResponseEntity.status(403).build();
+        }
+        tournamentService.deleteTournament(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/tournaments/{id}/rounds/cancel")
+    public ResponseEntity<?> cancelCurrentRound(@PathVariable UUID id) {
+        if (!tournamentAccessService.hasAccessToTournament(id)) {
+            return ResponseEntity.status(403).build();
+        }
+        try {
+            tournamentService.cancelCurrentRound(id);
+            return ResponseEntity.ok().build();
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.notFound().build();
+        } catch (IllegalStateException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
 

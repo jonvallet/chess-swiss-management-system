@@ -22,7 +22,7 @@ public class TournamentAccessService {
 
         if (hasRole(auth, "ROLE_ADMIN")) return true;
 
-        if (!hasRole(auth, "ROLE_PLAYER")) return false;
+        if (!hasRole(auth, "ROLE_PLAYER") && !hasRole(auth, "ROLE_CONTROLLER")) return false;
 
         return tournamentIdMatches(auth, tournamentId);
     }
@@ -33,7 +33,7 @@ public class TournamentAccessService {
 
         if (hasRole(auth, "ROLE_ADMIN")) return true;
 
-        if (!hasRole(auth, "ROLE_PLAYER") && !hasRole(auth, "ROLE_VIEWER")) return false;
+        if (!hasRole(auth, "ROLE_PLAYER") && !hasRole(auth, "ROLE_CONTROLLER")) return false;
 
         return tournamentIdMatches(auth, tournamentId);
     }

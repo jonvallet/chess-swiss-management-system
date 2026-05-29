@@ -19,14 +19,11 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401 || error.response?.status === 403) {
-      const role = localStorage.getItem('auth_role')
       localStorage.removeItem('auth_token')
       localStorage.removeItem('auth_role')
       localStorage.removeItem('auth_player_id')
       localStorage.removeItem('auth_tournament_id')
-      if (role === 'VIEWER' && !window.location.pathname.startsWith('/join/')) {
-        window.location.href = '/join'
-      } else if (window.location.pathname !== '/login' && !window.location.pathname.startsWith('/join/')) {
+      if (window.location.pathname !== '/login' && !window.location.pathname.startsWith('/join/')) {
         window.location.href = '/login'
       }
     }
@@ -86,12 +83,6 @@ export interface LoginResponse {
   role: string
 }
 
-export interface JoinTournamentResponse {
-  token: string
-  playerId: string
-  tournamentId: string
-}
-
 export interface ViewTournamentResponse {
   token: string
   tournamentId: string
@@ -109,9 +100,7 @@ export const AuthService = {
   login: (username: string, password: string) =>
     api.post<LoginResponse>('/auth/login', { username, password }).then(r => r.data),
   viewTournament: (code: string) =>
-    api.post<ViewTournamentResponse>(`/tournaments/share/${code}/view`).then(r => r.data),
-  joinTournament: (tournamentId: string, playerName: string, playerRating: number) =>
-    api.post<JoinTournamentResponse>(`/tournaments/${tournamentId}/join`, { playerName, playerRating }).then(r => r.data)
+    api.post<ViewTournamentResponse>(`/tournaments/share/${code}/view`).then(r => r.data)
 }
 
 export const TournamentService = {
@@ -123,12 +112,18 @@ export const TournamentService = {
     api.post<Tournament>('/tournaments', { name, totalRounds }).then(r => r.data),
   registerPlayer: (tournamentId: string, playerId: string) => 
     api.post<TournamentPlayer>(`/tournaments/${tournamentId}/register`, { playerId }).then(r => r.data),
+  createAndRegisterPlayer: (tournamentId: string, name: string, rating: number) =>
+    api.post<TournamentPlayer>(`/tournaments/${tournamentId}/players/create`, { name, rating }).then(r => r.data),
   assignBye: (tournamentId: string, playerId: string, roundNumber: number) =>
     api.post<Match>(`/tournaments/${tournamentId}/players/${playerId}/bye`, { roundNumber }).then(r => r.data),
   getPlayers: (tournamentId: string) => 
     api.get<TournamentPlayer[]>(`/tournaments/${tournamentId}/players`).then(r => r.data),
   generateNextRound: (tournamentId: string) => 
     api.post<Match[]>(`/tournaments/${tournamentId}/rounds/generate`).then(r => r.data),
+  cancelCurrentRound: (tournamentId: string) =>
+    api.post(`/tournaments/${tournamentId}/rounds/cancel`).then(r => r.data),
+  delete: (tournamentId: string) =>
+    api.delete(`/tournaments/${tournamentId}`).then(r => r.data),
   getRoundMatches: (tournamentId: string, roundNum: number) => 
     api.get<Match[]>(`/tournaments/${tournamentId}/rounds/${roundNum}/matches`).then(r => r.data),
   getAllMatches: (tournamentId: string) => 

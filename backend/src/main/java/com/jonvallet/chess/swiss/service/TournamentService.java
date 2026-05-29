@@ -111,6 +111,27 @@ public class TournamentService {
     }
 
     @Transactional
+    public TournamentPlayer createAndRegisterPlayer(UUID tournamentId, String name, Integer rating) {
+        Tournament tournament = tournamentRepository.findById(tournamentId)
+                .orElseThrow(() -> new IllegalArgumentException("Tournament not found"));
+
+        if (tournament.getStatus() != TournamentStatus.DRAFT) {
+            throw new IllegalStateException("Players can only be registered while tournament is in DRAFT status");
+        }
+
+        if (name == null || name.trim().isEmpty()) {
+            throw new IllegalArgumentException("Player name is required");
+        }
+
+        int playerRating = rating != null ? rating : 1200;
+
+        Player player = new Player(name.trim(), playerRating);
+        player = playerRepository.save(player);
+
+        return registerPlayer(tournamentId, player.getId());
+    }
+
+    @Transactional
     public Match assignBye(UUID tournamentId, UUID playerId, int roundNumber) {
         Tournament tournament = tournamentRepository.findById(tournamentId)
                 .orElseThrow(() -> new IllegalArgumentException("Tournament not found"));
@@ -212,6 +233,75 @@ public class TournamentService {
         tournamentRepository.save(tournament);
 
         return newMatches;
+    }
+
+    @Transactional
+    public void deleteTournament(UUID tournamentId) {
+        matchRepository.deleteByTournamentId(tournamentId);
+        tournamentPlayerRepository.deleteByTournamentId(tournamentId);
+        tournamentRepository.deleteById(tournamentId);
+    }
+
+    @Transactional
+    public void cancelCurrentRound(UUID tournamentId) {
+        Tournament tournament = tournamentRepository.findById(tournamentId)
+                .orElseThrow(() -> new IllegalArgumentException("Tournament not found"));
+
+        if (tournament.getStatus() == TournamentStatus.FINISHED) {
+            throw new IllegalStateException("Tournament is already finished.");
+        }
+
+        if (tournament.getCurrentRound() <= 0) {
+            throw new IllegalStateException("No rounds to cancel.");
+        }
+
+        int roundToCancel = tournament.getCurrentRound();
+        List<Match> matches = matchRepository.findByTournamentIdAndRoundNumber(tournamentId, roundToCancel);
+
+        if (matches.isEmpty()) {
+            throw new IllegalStateException("No matches found for round " + roundToCancel);
+        }
+
+        for (Match match : matches) {
+            if (match.getResult() == MatchResult.UNPLAYED) continue;
+
+            if (!match.getIsBye()) {
+                TournamentPlayer whiteTP = tournamentPlayerRepository.findById(
+                        new TournamentPlayerId(tournamentId, match.getWhitePlayer().getId())).orElse(null);
+                TournamentPlayer blackTP = tournamentPlayerRepository.findById(
+                        new TournamentPlayerId(tournamentId, match.getBlackPlayer().getId())).orElse(null);
+
+                if (whiteTP != null && blackTP != null) {
+                    if (match.getResult() == MatchResult.WHITE_WIN) {
+                        whiteTP.setScore(whiteTP.getScore().subtract(BigDecimal.ONE));
+                    } else if (match.getResult() == MatchResult.BLACK_WIN) {
+                        blackTP.setScore(blackTP.getScore().subtract(BigDecimal.ONE));
+                    } else if (match.getResult() == MatchResult.DRAW) {
+                        whiteTP.setScore(whiteTP.getScore().subtract(new BigDecimal("0.5")));
+                        blackTP.setScore(blackTP.getScore().subtract(new BigDecimal("0.5")));
+                    }
+                    whiteTP.setColorDifference(whiteTP.getColorDifference() - 1);
+                    blackTP.setColorDifference(blackTP.getColorDifference() + 1);
+                    tournamentPlayerRepository.save(whiteTP);
+                    tournamentPlayerRepository.save(blackTP);
+                }
+            } else {
+                TournamentPlayer tp = tournamentPlayerRepository.findById(
+                        new TournamentPlayerId(tournamentId, match.getWhitePlayer().getId())).orElse(null);
+                if (tp != null) {
+                    tp.setScore(tp.getScore().subtract(new BigDecimal("0.5")));
+                    tournamentPlayerRepository.save(tp);
+                }
+            }
+        }
+
+        matchRepository.deleteByTournamentIdAndRoundNumber(tournamentId, roundToCancel);
+
+        tournament.setCurrentRound(tournament.getCurrentRound() - 1);
+        if (tournament.getCurrentRound() == 0) {
+            tournament.setStatus(TournamentStatus.DRAFT);
+        }
+        tournamentRepository.save(tournament);
     }
 
     @Transactional
