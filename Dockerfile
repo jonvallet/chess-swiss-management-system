@@ -12,7 +12,8 @@ COPY --from=frontend /app/dist/ src/main/resources/static/
 RUN ./gradlew bootJar
 
 FROM eclipse-temurin:26-jre
-RUN groupadd -r app && useradd -r -g app app
+RUN groupadd -r app && useradd -r -g app app \
+    && mkdir -p /data && chown app:app /data
 USER app
 COPY --from=backend-build /app/build/libs/*.jar /app/app.jar
 EXPOSE 8080
