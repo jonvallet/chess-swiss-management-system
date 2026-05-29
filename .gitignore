@@ -35,6 +35,7 @@ backend/.classpath
 backend/.project
 backend/.settings/
 backend/bin/
+backend/data/
 
 # ==========================================
 # Frontend (Node & Vue) ignores
