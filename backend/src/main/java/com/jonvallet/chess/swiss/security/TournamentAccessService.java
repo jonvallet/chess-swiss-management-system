@@ -20,25 +20,42 @@ public class TournamentAccessService {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth == null) return false;
 
-        boolean isAdmin = auth.getAuthorities().stream()
-                .map(GrantedAuthority::getAuthority)
-                .anyMatch(a -> a.equals("ROLE_ADMIN"));
+        if (hasRole(auth, "ROLE_ADMIN")) return true;
 
-        if (isAdmin) return true;
+        if (!hasRole(auth, "ROLE_PLAYER")) return false;
 
-        String token = (String) auth.getCredentials();
-        if (token == null) return false;
+        return tournamentIdMatches(auth, tournamentId);
+    }
 
-        UUID tokenTournamentId = jwtService.getTournamentId(token);
-        return tournamentId.equals(tokenTournamentId);
+    public boolean hasReadAccessToTournament(UUID tournamentId) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null) return false;
+
+        if (hasRole(auth, "ROLE_ADMIN")) return true;
+
+        if (!hasRole(auth, "ROLE_PLAYER") && !hasRole(auth, "ROLE_VIEWER")) return false;
+
+        return tournamentIdMatches(auth, tournamentId);
     }
 
     public boolean isAdmin() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth == null) return false;
 
+        return hasRole(auth, "ROLE_ADMIN");
+    }
+
+    private boolean hasRole(Authentication auth, String role) {
         return auth.getAuthorities().stream()
                 .map(GrantedAuthority::getAuthority)
-                .anyMatch(a -> a.equals("ROLE_ADMIN"));
+                .anyMatch(a -> a.equals(role));
+    }
+
+    private boolean tournamentIdMatches(Authentication auth, UUID tournamentId) {
+        String token = (String) auth.getCredentials();
+        if (token == null) return false;
+
+        UUID tokenTournamentId = jwtService.getTournamentId(token);
+        return tournamentId.equals(tokenTournamentId);
     }
 }

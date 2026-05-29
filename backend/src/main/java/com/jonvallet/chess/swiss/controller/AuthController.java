@@ -4,15 +4,16 @@ import com.jonvallet.chess.swiss.dto.JoinTournamentRequest;
 import com.jonvallet.chess.swiss.dto.JoinTournamentResponse;
 import com.jonvallet.chess.swiss.dto.LoginRequest;
 import com.jonvallet.chess.swiss.dto.LoginResponse;
+import com.jonvallet.chess.swiss.dto.ViewTournamentResponse;
 import com.jonvallet.chess.swiss.model.Player;
 import com.jonvallet.chess.swiss.model.Tournament;
-import com.jonvallet.chess.swiss.model.TournamentPlayer;
 import com.jonvallet.chess.swiss.repository.PlayerRepository;
 import com.jonvallet.chess.swiss.repository.TournamentRepository;
 import com.jonvallet.chess.swiss.security.AppProperties;
 import com.jonvallet.chess.swiss.security.JwtService;
 import com.jonvallet.chess.swiss.service.TournamentService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
@@ -52,14 +53,42 @@ public class AuthController {
         return ResponseEntity.status(401).build();
     }
 
+    @PostMapping("/tournaments/share/{code}/view")
+    public ResponseEntity<?> viewTournament(@PathVariable String code) {
+        try {
+            Tournament tournament = tournamentService.getTournamentByShareCode(code.toUpperCase().trim());
+            String token = jwtService.generateViewerToken(tournament.getId());
+            return ResponseEntity.ok(new ViewTournamentResponse(token, tournament.getId()));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
     @PostMapping("/tournaments/{id}/join")
     public ResponseEntity<?> joinTournament(@PathVariable UUID id,
-                                            @RequestBody JoinTournamentRequest request) {
+                                            @RequestBody JoinTournamentRequest request,
+                                            Authentication authentication) {
         Tournament tournament = tournamentRepository.findById(id)
                 .orElse(null);
 
         if (tournament == null) {
             return ResponseEntity.notFound().build();
+        }
+
+        boolean isAdmin = authentication != null && authentication.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+
+        if (!isAdmin) {
+            if (authentication == null || !authentication.getAuthorities().stream()
+                    .anyMatch(a -> a.getAuthority().equals("ROLE_VIEWER"))) {
+                return ResponseEntity.status(403).build();
+            }
+
+            String token = (String) authentication.getCredentials();
+            UUID tokenTournamentId = jwtService.getTournamentId(token);
+            if (!id.equals(tokenTournamentId)) {
+                return ResponseEntity.status(403).build();
+            }
         }
 
         if (request.getPlayerName() == null || request.getPlayerName().trim().isEmpty()) {
@@ -79,8 +108,8 @@ public class AuthController {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
 
-        String token = jwtService.generatePlayerToken(player.getId(), id);
+        String playerToken = jwtService.generatePlayerToken(player.getId(), id);
 
-        return ResponseEntity.ok(new JoinTournamentResponse(token, player.getId(), id));
+        return ResponseEntity.ok(new JoinTournamentResponse(playerToken, player.getId(), id));
     }
 }

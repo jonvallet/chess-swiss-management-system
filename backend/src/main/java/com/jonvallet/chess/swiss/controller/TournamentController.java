@@ -50,7 +50,7 @@ public class TournamentController {
 
     @GetMapping("/tournaments/{id}")
     public ResponseEntity<Tournament> getTournamentById(@PathVariable UUID id) {
-        if (!tournamentAccessService.hasAccessToTournament(id)) {
+        if (!tournamentAccessService.hasReadAccessToTournament(id)) {
             return ResponseEntity.status(403).build();
         }
         return tournamentRepository.findById(id)
@@ -119,7 +119,7 @@ public class TournamentController {
 
     @GetMapping("/tournaments/{id}/players")
     public ResponseEntity<List<TournamentPlayer>> getRegisteredPlayers(@PathVariable UUID id) {
-        if (!tournamentAccessService.hasAccessToTournament(id)) {
+        if (!tournamentAccessService.hasReadAccessToTournament(id)) {
             return ResponseEntity.status(403).build();
         }
         return ResponseEntity.ok(tournamentPlayerRepository.findByTournamentId(id));
@@ -144,7 +144,7 @@ public class TournamentController {
     public ResponseEntity<List<Match>> getRoundMatches(
             @PathVariable UUID id,
             @PathVariable Integer roundNum) {
-        if (!tournamentAccessService.hasAccessToTournament(id)) {
+        if (!tournamentAccessService.hasReadAccessToTournament(id)) {
             return ResponseEntity.status(403).build();
         }
         return ResponseEntity.ok(matchRepository.findByTournamentIdAndRoundNumber(id, roundNum));
@@ -152,7 +152,7 @@ public class TournamentController {
 
     @GetMapping("/tournaments/{id}/matches")
     public ResponseEntity<List<Match>> getAllMatches(@PathVariable UUID id) {
-        if (!tournamentAccessService.hasAccessToTournament(id)) {
+        if (!tournamentAccessService.hasReadAccessToTournament(id)) {
             return ResponseEntity.status(403).build();
         }
         return ResponseEntity.ok(matchRepository.findByTournamentId(id));
@@ -181,7 +181,7 @@ public class TournamentController {
 
     @GetMapping("/tournaments/{id}/standings")
     public ResponseEntity<List<PlayerStandingDto>> getStandings(@PathVariable UUID id) {
-        if (!tournamentAccessService.hasAccessToTournament(id)) {
+        if (!tournamentAccessService.hasReadAccessToTournament(id)) {
             return ResponseEntity.status(403).build();
         }
         try {

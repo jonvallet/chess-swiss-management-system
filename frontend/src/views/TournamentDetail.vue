@@ -1,13 +1,18 @@
 <script setup lang="ts">
 import { ref, onMounted, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { TournamentService, PlayerService } from '../services/api'
+import { TournamentService, PlayerService, AuthService } from '../services/api'
+import { useAuthStore } from '../stores/auth'
 import type { Tournament, TournamentPlayer, Match, PlayerStanding, Player } from '../services/api'
 import Button from 'primevue/button'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
+import InputText from 'primevue/inputtext'
+import InputNumber from 'primevue/inputnumber'
+import Dialog from 'primevue/dialog'
 
 const route = useRoute()
+const authStore = useAuthStore()
 const tournamentId = computed(() => route.params.id as string)
 
 const tournament = ref<Tournament | null>(null)
@@ -50,8 +55,8 @@ const fetchData = async () => {
       activeRoundTab.value = 1
     }
 
-    // 5. Fetch all global players for registration (only if in DRAFT mode)
-    if (tournament.value.status === 'DRAFT') {
+    // 5. Fetch all global players for admin registration (only if in DRAFT mode)
+    if (authStore.isAdmin && tournament.value.status === 'DRAFT') {
       const allPlayers = await PlayerService.getAll()
       // Filter out players already registered
       const registeredIds = new Set(tournamentPlayers.value.map(tp => tp.player.id))
@@ -152,6 +157,36 @@ const handleCopyInviteLink = () => {
     copied.value = false
   }, 2000)
 }
+
+const showRegisterDialog = ref(false)
+const registerName = ref('')
+const registerRating = ref(1200)
+const registering = ref(false)
+const registerError = ref('')
+
+const handleRegisterToPlay = async () => {
+  if (!registerName.value.trim()) {
+    registerError.value = 'Please enter your name.'
+    return
+  }
+  registering.value = true
+  registerError.value = ''
+  try {
+    const response = await AuthService.joinTournament(
+      tournamentId.value,
+      registerName.value.trim(),
+      registerRating.value || 1200
+    )
+    authStore.setAuth(response.token, 'PLAYER', response.playerId, response.tournamentId)
+    showRegisterDialog.value = false
+    await fetchData()
+  } catch (err: any) {
+    console.error('Error registering to play:', err)
+    registerError.value = err.response?.data || 'Could not register. Please try again.'
+  } finally {
+    registering.value = false
+  }
+}
 </script>
 
 <template>
@@ -196,9 +231,18 @@ const handleCopyInviteLink = () => {
 
       <!-- Action Button -->
       <div class="w-full md:w-auto">
+        <!-- VIEWER: Register to Play -->
+        <Button 
+          v-if="authStore.isViewer && tournament.status === 'DRAFT'"
+          label="Register to Play"
+          icon="pi pi-sign-in"
+          class="w-full md:w-auto bg-amber-500 hover:bg-amber-600 border-none text-slate-950 font-semibold px-5 py-3 rounded-lg text-sm shadow-md"
+          @click="showRegisterDialog = true"
+        />
+
         <!-- Draft Mode -> Generate Round 1 -->
         <Button 
-          v-if="tournament.status === 'DRAFT'"
+          v-if="authStore.canEdit && tournament.status === 'DRAFT'"
           label="Generate Round 1 Pairings"
           icon="pi pi-play"
           :disabled="tournamentPlayers.length < 2 || generatingPairings"
@@ -209,7 +253,7 @@ const handleCopyInviteLink = () => {
 
         <!-- Active round matches finished -> Generate Next Round -->
         <Button 
-          v-else-if="tournament.status === 'IN_PROGRESS' && isCurrentRoundCompleted && tournament.currentRound < tournament.totalRounds"
+          v-else-if="authStore.canEdit && tournament.status === 'IN_PROGRESS' && isCurrentRoundCompleted && tournament.currentRound < tournament.totalRounds"
           :label="`Generate Round ${tournament.currentRound + 1} Pairings`"
           icon="pi pi-forward"
           :loading="generatingPairings"
@@ -219,7 +263,7 @@ const handleCopyInviteLink = () => {
 
         <!-- Active round matches in progress but uncompleted -->
         <div 
-          v-else-if="tournament.status === 'IN_PROGRESS' && !isCurrentRoundCompleted"
+          v-else-if="authStore.canEdit && tournament.status === 'IN_PROGRESS' && !isCurrentRoundCompleted"
           class="bg-amber-50 text-amber-700 px-4 py-2.5 rounded-lg border border-amber-200 text-sm font-semibold flex items-center gap-2"
         >
           <i class="pi pi-info-circle"></i>
@@ -369,7 +413,7 @@ const handleCopyInviteLink = () => {
               </div>
 
               <!-- Input Actions for UNPLAYED or active matches -->
-              <div class="mt-5 border-t border-slate-200/60 pt-4 flex flex-col gap-2">
+              <div v-if="authStore.canEdit" class="mt-5 border-t border-slate-200/60 pt-4 flex flex-col gap-2">
                 <span class="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
                   {{ match.result !== 'UNPLAYED' ? 'Change Result' : 'Enter Match Outcome' }}
                 </span>
@@ -413,8 +457,8 @@ const handleCopyInviteLink = () => {
       <!-- 3. PLAYERS & BYES PANEL -->
       <div v-else-if="activeTab === 'players'" class="space-y-8">
         
-        <!-- Bye Assignment Section -->
-        <div v-if="tournament.status !== 'FINISHED' && tournament.currentRound < tournament.totalRounds" class="bg-amber-50 p-6 rounded-xl border border-amber-200">
+        <!-- Bye Assignment Section (Admin/Player only) -->
+        <div v-if="authStore.canEdit && tournament.status !== 'FINISHED' && tournament.currentRound < tournament.totalRounds" class="bg-amber-50 p-6 rounded-xl border border-amber-200">
           <h3 class="font-bold text-slate-800 mb-2 flex items-center gap-2">
             <i class="pi pi-pause-circle text-amber-600"></i>
             Assign Bye for Round {{ tournament.currentRound + 1 }}
@@ -459,8 +503,8 @@ const handleCopyInviteLink = () => {
           </div>
         </div>
 
-        <!-- Player Registration Section (only in DRAFT) -->
-        <div v-if="tournament.status === 'DRAFT'" class="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <!-- Player Registration Section (only in DRAFT, admin only) -->
+        <div v-if="authStore.canEdit && tournament.status === 'DRAFT'" class="grid grid-cols-1 md:grid-cols-2 gap-8">
           
           <!-- Currently Registered List -->
           <div class="bg-slate-50 p-6 rounded-xl border border-slate-200">
@@ -514,11 +558,39 @@ const handleCopyInviteLink = () => {
                 />
               </li>
             </ul>
-          </div>
         </div>
+      </div>
 
-        <!-- Message when tournament is in progress -->
-        <div v-else-if="tournament.status === 'IN_PROGRESS'" class="bg-slate-50 p-6 rounded-xl border border-slate-200">
+      <!-- Enrolled Players List for VIEWERs in DRAFT (read-only) -->
+      <div v-else-if="authStore.isViewer && tournament.status === 'DRAFT'" class="space-y-4">
+        <div class="bg-slate-50 p-6 rounded-xl border border-slate-200">
+          <h3 class="font-bold text-slate-800 mb-4 flex justify-between items-center">
+            <span>Enrolled Players</span>
+            <span class="bg-slate-200 text-slate-700 px-2.5 py-0.5 rounded-full text-xs font-semibold">
+              {{ tournamentPlayers.length }} Enrolled
+            </span>
+          </h3>
+          <div v-if="tournamentPlayers.length === 0" class="text-center py-12 text-slate-400">
+            <i class="pi pi-users text-3xl mb-2"></i>
+            <p class="text-xs">No players enrolled in this tournament yet.</p>
+          </div>
+          <ul v-else class="space-y-2 max-h-[400px] overflow-y-auto pr-2">
+            <li 
+              v-for="tp in tournamentPlayers" 
+              :key="tp.player.id"
+              class="bg-white px-4 py-3 rounded-lg border border-slate-200 flex justify-between items-center"
+            >
+              <div class="flex items-center gap-2">
+                <span class="font-semibold text-slate-700 text-sm">{{ tp.player.name }}</span>
+                <span class="text-xs text-slate-400 font-mono">({{ tp.player.rating }})</span>
+              </div>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Message when tournament is in progress -->
+      <div v-else-if="tournament.status === 'IN_PROGRESS'" class="bg-slate-50 p-6 rounded-xl border border-slate-200">
           <h3 class="font-bold text-slate-800 mb-2">Enrolled Players</h3>
           <p class="text-xs text-slate-500 mb-4">Tournament is in progress. Player registration is closed.</p>
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -542,4 +614,58 @@ const handleCopyInviteLink = () => {
 
     </div>
   </div>
+
+  <!-- Register to Play Dialog -->
+  <Dialog 
+    v-model:visible="showRegisterDialog" 
+    header="Register to Play" 
+    :modal="true"
+    class="w-full max-w-md"
+  >
+    <div class="space-y-4 p-2">
+      <div class="flex flex-col gap-1.5">
+        <label for="regName" class="text-xs font-bold text-slate-600 uppercase tracking-wider">Your Full Name</label>
+        <InputText 
+          id="regName" 
+          v-model="registerName" 
+          placeholder="E.g., Bobby Fischer" 
+          class="w-full px-3 py-2.5 border border-slate-300 rounded-lg text-slate-800 focus:ring-2 focus:ring-amber-400 outline-none"
+          @keyup.enter="handleRegisterToPlay"
+        />
+      </div>
+
+      <div class="flex flex-col gap-1.5">
+        <label for="regRating" class="text-xs font-bold text-slate-600 uppercase tracking-wider">Your Rating (Optional)</label>
+        <InputNumber 
+          id="regRating" 
+          v-model="registerRating" 
+          :min="100" 
+          :max="3000" 
+          showButtons
+          class="w-full"
+          inputClass="w-full px-3 py-2.5 border border-slate-300 rounded-lg text-slate-800 focus:ring-2 focus:ring-amber-400 outline-none font-mono"
+        />
+        <span class="text-[10px] text-slate-400">Leave default (1200) if you don't have an official chess rating.</span>
+      </div>
+
+      <div v-if="registerError" class="bg-rose-50 text-rose-600 p-3 rounded-lg border border-rose-100 text-xs font-semibold">
+        <i class="pi pi-exclamation-circle mr-1"></i> {{ registerError }}
+      </div>
+
+      <div class="flex gap-2 pt-2">
+        <Button 
+          label="Cancel" 
+          class="flex-1 p-button-text text-slate-400 hover:text-slate-600 font-semibold py-2 rounded-lg text-sm"
+          @click="showRegisterDialog = false"
+        />
+        <Button 
+          label="Register & Play" 
+          icon="pi pi-sign-in"
+          :loading="registering"
+          class="flex-1 bg-amber-500 hover:bg-amber-600 border-none text-slate-950 font-extrabold px-5 py-2.5 rounded-lg text-sm shadow-md"
+          @click="handleRegisterToPlay"
+        />
+      </div>
+    </div>
+  </Dialog>
 </template>
