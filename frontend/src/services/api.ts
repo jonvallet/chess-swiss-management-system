@@ -19,11 +19,14 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401 || error.response?.status === 403) {
+      const role = localStorage.getItem('auth_role')
       localStorage.removeItem('auth_token')
       localStorage.removeItem('auth_role')
       localStorage.removeItem('auth_player_id')
       localStorage.removeItem('auth_tournament_id')
-      if (window.location.pathname !== '/login' && !window.location.pathname.startsWith('/join/')) {
+      if (role === 'VIEWER' && !window.location.pathname.startsWith('/join/')) {
+        window.location.href = '/join'
+      } else if (window.location.pathname !== '/login' && !window.location.pathname.startsWith('/join/')) {
         window.location.href = '/login'
       }
     }
@@ -89,6 +92,11 @@ export interface JoinTournamentResponse {
   tournamentId: string
 }
 
+export interface ViewTournamentResponse {
+  token: string
+  tournamentId: string
+}
+
 // API methods
 export const PlayerService = {
   getAll: () => api.get<Player[]>('/players').then(r => r.data),
@@ -100,6 +108,8 @@ export const PlayerService = {
 export const AuthService = {
   login: (username: string, password: string) =>
     api.post<LoginResponse>('/auth/login', { username, password }).then(r => r.data),
+  viewTournament: (code: string) =>
+    api.post<ViewTournamentResponse>(`/tournaments/share/${code}/view`).then(r => r.data),
   joinTournament: (tournamentId: string, playerName: string, playerRating: number) =>
     api.post<JoinTournamentResponse>(`/tournaments/${tournamentId}/join`, { playerName, playerRating }).then(r => r.data)
 }

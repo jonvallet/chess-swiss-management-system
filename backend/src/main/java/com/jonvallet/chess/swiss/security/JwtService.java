@@ -43,6 +43,17 @@ public class JwtService {
                 .compact();
     }
 
+    public String generateViewerToken(UUID tournamentId) {
+        return Jwts.builder()
+                .subject(tournamentId.toString())
+                .claim("role", "VIEWER")
+                .claim("tournamentId", tournamentId.toString())
+                .issuedAt(new Date())
+                .expiration(new Date(System.currentTimeMillis() + appProperties.getJwt().getExpirationMs()))
+                .signWith(signingKey)
+                .compact();
+    }
+
     public Claims parseToken(String token) {
         return Jwts.parser()
                 .verifyWith(signingKey)
