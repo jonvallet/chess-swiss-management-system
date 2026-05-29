@@ -35,10 +35,12 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/tournaments/share/**").permitAll()
+                        .requestMatchers("/error/**").permitAll()
                         .requestMatchers("/api/players/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.POST, "/api/tournaments").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.GET, "/api/tournaments").hasRole("ADMIN")
-                        .anyRequest().authenticated()
+                        .requestMatchers("/api/**").authenticated()
+                        .anyRequest().permitAll()
                 )
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
