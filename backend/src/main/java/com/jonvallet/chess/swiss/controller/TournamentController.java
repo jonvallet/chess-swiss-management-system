@@ -113,6 +113,21 @@ public class TournamentController {
         }
     }
 
+    @PostMapping("/tournaments/{id}/rounds/cancel")
+    public ResponseEntity<?> cancelCurrentRound(@PathVariable UUID id) {
+        if (!tournamentAccessService.hasAccessToTournament(id)) {
+            return ResponseEntity.status(403).build();
+        }
+        try {
+            tournamentService.cancelCurrentRound(id);
+            return ResponseEntity.ok().build();
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.notFound().build();
+        } catch (IllegalStateException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
     @PostMapping("/tournaments/{id}/players/{playerId}/bye")
     public ResponseEntity<Match> assignBye(
             @PathVariable UUID id,

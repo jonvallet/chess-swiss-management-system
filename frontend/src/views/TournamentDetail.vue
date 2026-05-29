@@ -9,6 +9,7 @@ import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import InputText from 'primevue/inputtext'
 import InputNumber from 'primevue/inputnumber'
+import Dialog from 'primevue/dialog'
 
 const route = useRoute()
 const authStore = useAuthStore()
@@ -84,6 +85,23 @@ const handleCreatePlayer = async () => {
     console.error('Error creating player:', err)
   } finally {
     creatingPlayer.value = false
+  }
+}
+
+const showCancelDialog = ref(false)
+const cancellingRound = ref(false)
+
+const handleCancelRound = async () => {
+  cancellingRound.value = true
+  try {
+    await TournamentService.cancelCurrentRound(tournamentId.value)
+    showCancelDialog.value = false
+    await fetchData()
+  } catch (err) {
+    console.error('Error cancelling round:', err)
+    alert(err instanceof Error ? err.message : 'Could not cancel round.')
+  } finally {
+    cancellingRound.value = false
   }
 }
 
@@ -220,7 +238,7 @@ const handleCopyInviteLink = () => {
       </div>
 
       <!-- Action Button -->
-      <div class="w-full md:w-auto">
+      <div class="w-full md:w-auto flex flex-col gap-2">
         <!-- Draft Mode -> Generate Round 1 -->
         <Button 
           v-if="authStore.canEdit && tournament.status === 'DRAFT'"
@@ -259,6 +277,15 @@ const handleCopyInviteLink = () => {
           <i class="pi pi-check-circle text-lg"></i>
           Tournament Completed
         </div>
+
+        <!-- Cancel Round (visible when a round exists and can edit) -->
+        <Button
+          v-if="authStore.canEdit && tournament.currentRound > 0 && tournament.status !== 'FINISHED'"
+          label="Cancel Round"
+          icon="pi pi-undo"
+          class="w-full md:w-auto bg-white hover:bg-red-50 border border-red-300 text-red-600 hover:text-red-700 font-semibold px-5 py-2.5 rounded-lg text-sm shadow-xs"
+          @click="showCancelDialog = true"
+        />
       </div>
     </div>
 
@@ -595,4 +622,37 @@ const handleCopyInviteLink = () => {
 
     </div>
   </div>
+
+  <!-- Cancel Round Confirmation Dialog -->
+  <Dialog
+    v-model:visible="showCancelDialog"
+    header="Cancel Round"
+    :modal="true"
+    class="w-full max-w-md"
+  >
+    <div class="space-y-4 p-2">
+      <div class="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3">
+        <i class="pi pi-exclamation-triangle text-red-500 text-xl mt-0.5"></i>
+        <div class="text-sm text-red-700">
+          <p class="font-bold mb-1">This will delete round {{ tournament?.currentRound }} and all its match data.</p>
+          <p>Scores and color differences for any completed matches will be reverted.</p>
+        </div>
+      </div>
+
+      <div class="flex gap-2 pt-2">
+        <Button
+          label="Keep Round"
+          class="flex-1 p-button-text text-slate-400 hover:text-slate-600 font-semibold py-2 rounded-lg text-sm"
+          @click="showCancelDialog = false"
+        />
+        <Button
+          label="Cancel Round"
+          icon="pi pi-undo"
+          :loading="cancellingRound"
+          class="flex-1 bg-red-500 hover:bg-red-600 border-none text-white font-bold px-5 py-2.5 rounded-lg text-sm shadow-md"
+          @click="handleCancelRound"
+        />
+      </div>
+    </div>
+  </Dialog>
 </template>
