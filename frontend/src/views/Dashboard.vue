@@ -2,6 +2,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { TournamentService, PlayerService } from '../services/api'
+import { useAuthStore } from '../stores/auth'
 import type { Tournament } from '../services/api'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
@@ -9,6 +10,7 @@ import InputNumber from 'primevue/inputnumber'
 import Dialog from 'primevue/dialog'
 
 const router = useRouter()
+const authStore = useAuthStore()
 const tournaments = ref<Tournament[]>([])
 const totalGlobalPlayers = ref(0)
 const loading = ref(false)
@@ -21,6 +23,32 @@ const showJoinDialog = ref(false)
 const joinCode = ref('')
 const joining = ref(false)
 const joinError = ref('')
+
+const showDeleteDialog = ref(false)
+const tournamentToDelete = ref<Tournament | null>(null)
+const deletingTournament = ref(false)
+
+const handleDeleteTournament = async () => {
+  if (!tournamentToDelete.value) return
+  deletingTournament.value = true
+  try {
+    await TournamentService.delete(tournamentToDelete.value.id)
+    showDeleteDialog.value = false
+    tournamentToDelete.value = null
+    await fetchDashboardData()
+  } catch (err) {
+    console.error('Error deleting tournament:', err)
+    alert('Could not delete tournament.')
+  } finally {
+    deletingTournament.value = false
+  }
+}
+
+const promptDelete = (tournament: Tournament, event: MouseEvent) => {
+  event.stopPropagation()
+  tournamentToDelete.value = tournament
+  showDeleteDialog.value = true
+}
 
 const handleJoinByCode = async () => {
   if (!joinCode.value.trim() || joinCode.value.trim().length !== 6) {
@@ -185,9 +213,17 @@ onMounted(() => {
         <div 
           v-for="tournament in tournaments" 
           :key="tournament.id"
-          class="bg-slate-50 hover:bg-slate-100/50 transition-all duration-150 p-6 rounded-xl border border-slate-200 cursor-pointer flex flex-col justify-between hover:shadow-md hover:border-amber-400 group"
+          class="bg-slate-50 hover:bg-slate-100/50 transition-all duration-150 p-6 rounded-xl border border-slate-200 cursor-pointer flex flex-col justify-between hover:shadow-md hover:border-amber-400 group relative"
           @click="router.push(`/tournaments/${tournament.id}`)"
         >
+          <button
+            v-if="authStore.isAdmin"
+            class="absolute top-3 right-3 w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all"
+            title="Delete tournament"
+            @click.stop="promptDelete(tournament, $event)"
+          >
+            <i class="pi pi-trash text-sm"></i>
+          </button>
           <div>
             <div class="flex justify-between items-start mb-4">
               <span 
@@ -299,6 +335,40 @@ onMounted(() => {
           />
         </div>
       </template>
+    </Dialog>
+
+    <!-- Delete Tournament Confirmation Dialog -->
+    <Dialog
+      v-model:visible="showDeleteDialog"
+      header="Delete Tournament"
+      :modal="true"
+      class="w-full max-w-md"
+    >
+      <div class="space-y-4 p-2">
+        <div class="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3">
+          <i class="pi pi-exclamation-triangle text-red-500 text-xl mt-0.5"></i>
+          <div class="text-sm text-red-700">
+            <p class="font-bold mb-1">Permanently delete "{{ tournamentToDelete?.name }}"?</p>
+            <p>All matches, scores, and player registrations will be removed. Players in the global directory will not be affected.</p>
+            <p class="font-bold mt-2">This action cannot be undone.</p>
+          </div>
+        </div>
+
+        <div class="flex gap-2 pt-2">
+          <Button
+            label="Keep Tournament"
+            class="flex-1 p-button-text text-slate-400 hover:text-slate-600 font-semibold py-2 rounded-lg text-sm"
+            @click="showDeleteDialog = false; tournamentToDelete = null"
+          />
+          <Button
+            label="Delete Tournament"
+            icon="pi pi-trash"
+            :loading="deletingTournament"
+            class="flex-1 bg-red-500 hover:bg-red-600 border-none text-white font-bold px-5 py-2.5 rounded-lg text-sm shadow-md"
+            @click="handleDeleteTournament"
+          />
+        </div>
+      </div>
     </Dialog>
   </div>
 </template>

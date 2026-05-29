@@ -236,6 +236,13 @@ public class TournamentService {
     }
 
     @Transactional
+    public void deleteTournament(UUID tournamentId) {
+        matchRepository.deleteByTournamentId(tournamentId);
+        tournamentPlayerRepository.deleteByTournamentId(tournamentId);
+        tournamentRepository.deleteById(tournamentId);
+    }
+
+    @Transactional
     public void cancelCurrentRound(UUID tournamentId) {
         Tournament tournament = tournamentRepository.findById(tournamentId)
                 .orElseThrow(() -> new IllegalArgumentException("Tournament not found"));

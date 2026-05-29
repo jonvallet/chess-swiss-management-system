@@ -113,6 +113,15 @@ public class TournamentController {
         }
     }
 
+    @DeleteMapping("/tournaments/{id}")
+    public ResponseEntity<?> deleteTournament(@PathVariable UUID id) {
+        if (!tournamentAccessService.isAdmin()) {
+            return ResponseEntity.status(403).build();
+        }
+        tournamentService.deleteTournament(id);
+        return ResponseEntity.noContent().build();
+    }
+
     @PostMapping("/tournaments/{id}/rounds/cancel")
     public ResponseEntity<?> cancelCurrentRound(@PathVariable UUID id) {
         if (!tournamentAccessService.hasAccessToTournament(id)) {

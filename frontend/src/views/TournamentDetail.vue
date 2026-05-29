@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, computed, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { TournamentService, PlayerService } from '../services/api'
 import { useAuthStore } from '../stores/auth'
 import type { Tournament, TournamentPlayer, Match, PlayerStanding, Player } from '../services/api'
@@ -12,6 +12,7 @@ import InputNumber from 'primevue/inputnumber'
 import Dialog from 'primevue/dialog'
 
 const route = useRoute()
+const router = useRouter()
 const authStore = useAuthStore()
 const tournamentId = computed(() => route.params.id as string)
 
@@ -90,6 +91,22 @@ const handleCreatePlayer = async () => {
 
 const showCancelDialog = ref(false)
 const cancellingRound = ref(false)
+const showDeleteDialog = ref(false)
+const deletingTournament = ref(false)
+
+const handleDeleteTournament = async () => {
+  deletingTournament.value = true
+  try {
+    await TournamentService.delete(tournamentId.value)
+    showDeleteDialog.value = false
+    router.push('/')
+  } catch (err) {
+    console.error('Error deleting tournament:', err)
+    alert('Could not delete tournament.')
+  } finally {
+    deletingTournament.value = false
+  }
+}
 
 const handleCancelRound = async () => {
   cancellingRound.value = true
@@ -285,6 +302,15 @@ const handleCopyInviteLink = () => {
           icon="pi pi-undo"
           class="w-full md:w-auto bg-white hover:bg-red-50 border border-red-300 text-red-600 hover:text-red-700 font-semibold px-5 py-2.5 rounded-lg text-sm shadow-xs"
           @click="showCancelDialog = true"
+        />
+
+        <!-- Delete Tournament (admin only) -->
+        <Button
+          v-if="authStore.isAdmin"
+          label="Delete Tournament"
+          icon="pi pi-trash"
+          class="w-full md:w-auto bg-white hover:bg-red-50 border border-red-300 text-red-600 hover:text-red-700 font-semibold px-5 py-2.5 rounded-lg text-sm shadow-xs"
+          @click="showDeleteDialog = true"
         />
       </div>
     </div>
@@ -651,6 +677,40 @@ const handleCopyInviteLink = () => {
           :loading="cancellingRound"
           class="flex-1 bg-red-500 hover:bg-red-600 border-none text-white font-bold px-5 py-2.5 rounded-lg text-sm shadow-md"
           @click="handleCancelRound"
+        />
+      </div>
+    </div>
+  </Dialog>
+
+  <!-- Delete Tournament Confirmation Dialog -->
+  <Dialog
+    v-model:visible="showDeleteDialog"
+    header="Delete Tournament"
+    :modal="true"
+    class="w-full max-w-md"
+  >
+    <div class="space-y-4 p-2">
+      <div class="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3">
+        <i class="pi pi-exclamation-triangle text-red-500 text-xl mt-0.5"></i>
+        <div class="text-sm text-red-700">
+          <p class="font-bold mb-1">Permanently delete "{{ tournament?.name }}"?</p>
+          <p>All matches, scores, and player registrations will be removed. Players in the global directory will not be affected.</p>
+          <p class="font-bold mt-2">This action cannot be undone.</p>
+        </div>
+      </div>
+
+      <div class="flex gap-2 pt-2">
+        <Button
+          label="Keep Tournament"
+          class="flex-1 p-button-text text-slate-400 hover:text-slate-600 font-semibold py-2 rounded-lg text-sm"
+          @click="showDeleteDialog = false"
+        />
+        <Button
+          label="Delete Tournament"
+          icon="pi pi-trash"
+          :loading="deletingTournament"
+          class="flex-1 bg-red-500 hover:bg-red-600 border-none text-white font-bold px-5 py-2.5 rounded-lg text-sm shadow-md"
+          @click="handleDeleteTournament"
         />
       </div>
     </div>
