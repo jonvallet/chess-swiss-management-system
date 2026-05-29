@@ -139,6 +139,6 @@ class SwissPairingServiceTest {
         
         assertEquals(p3.getId(), byeMatch.getWhitePlayer().getId());
         assertNull(byeMatch.getBlackPlayer());
-        assertEquals(MatchResult.WHITE_WIN, byeMatch.getResult());
+        assertEquals(MatchResult.DRAW, byeMatch.getResult());
     }
 }

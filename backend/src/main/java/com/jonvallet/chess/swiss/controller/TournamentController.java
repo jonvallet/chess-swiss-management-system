@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -87,6 +88,28 @@ public class TournamentController {
         try {
             TournamentPlayer tp = tournamentService.registerPlayer(id, request.getPlayerId());
             return ResponseEntity.ok(tp);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.notFound().build();
+        } catch (IllegalStateException e) {
+            return ResponseEntity.badRequest().body(null);
+        }
+    }
+
+    @PostMapping("/tournaments/{id}/players/{playerId}/bye")
+    public ResponseEntity<Match> assignBye(
+            @PathVariable UUID id,
+            @PathVariable UUID playerId,
+            @RequestBody Map<String, Integer> request) {
+        if (!tournamentAccessService.hasAccessToTournament(id)) {
+            return ResponseEntity.status(403).build();
+        }
+        try {
+            Integer roundNumber = request.get("roundNumber");
+            if (roundNumber == null) {
+                return ResponseEntity.badRequest().build();
+            }
+            Match byeMatch = tournamentService.assignBye(id, playerId, roundNumber);
+            return ResponseEntity.ok(byeMatch);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.notFound().build();
         } catch (IllegalStateException e) {

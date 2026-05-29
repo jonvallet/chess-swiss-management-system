@@ -111,6 +111,57 @@ public class TournamentService {
     }
 
     @Transactional
+    public Match assignBye(UUID tournamentId, UUID playerId, int roundNumber) {
+        Tournament tournament = tournamentRepository.findById(tournamentId)
+                .orElseThrow(() -> new IllegalArgumentException("Tournament not found"));
+
+        if (tournament.getStatus() == TournamentStatus.FINISHED) {
+            throw new IllegalStateException("Tournament is already finished.");
+        }
+
+        int nextRound = tournament.getCurrentRound() + 1;
+        if (roundNumber != nextRound) {
+            throw new IllegalStateException("Can only assign bye for the next round (round " + nextRound + ").");
+        }
+
+        Player player = playerRepository.findById(playerId)
+                .orElseThrow(() -> new IllegalArgumentException("Player not found"));
+
+        TournamentPlayerId tpId = new TournamentPlayerId(tournamentId, playerId);
+        if (!tournamentPlayerRepository.existsById(tpId)) {
+            throw new IllegalArgumentException("Player is not registered for this tournament.");
+        }
+
+        List<Match> nextRoundMatches = matchRepository.findByTournamentIdAndRoundNumber(tournamentId, roundNumber);
+        boolean alreadyHasBye = nextRoundMatches.stream()
+                .anyMatch(m -> m.getIsBye() && m.getWhitePlayer().getId().equals(playerId));
+        if (alreadyHasBye) {
+            throw new IllegalStateException("Player already has a bye for this round.");
+        }
+
+        boolean alreadyPaired = nextRoundMatches.stream()
+                .anyMatch(m -> !m.getIsBye() && 
+                        (m.getWhitePlayer().getId().equals(playerId) || 
+                         (m.getBlackPlayer() != null && m.getBlackPlayer().getId().equals(playerId))));
+        if (alreadyPaired) {
+            throw new IllegalStateException("Player is already paired for this round. Cannot assign bye.");
+        }
+
+        Match byeMatch = Match.builder()
+                .tournament(tournament)
+                .roundNumber(roundNumber)
+                .whitePlayer(player)
+                .blackPlayer(null)
+                .result(MatchResult.DRAW)
+                .isBye(true)
+                .build();
+
+        byeMatch = matchRepository.save(byeMatch);
+
+        return byeMatch;
+    }
+
+    @Transactional
     public List<Match> generateNextRound(UUID tournamentId) {
         Tournament tournament = tournamentRepository.findById(tournamentId)
                 .orElseThrow(() -> new IllegalArgumentException("Tournament not found"));
@@ -140,6 +191,19 @@ public class TournamentService {
         // Save generated matches
         newMatches = matchRepository.saveAll(newMatches);
 
+        // Award scores for any bye matches (both pre-assigned and automatic)
+        for (Match match : newMatches) {
+            if (match.getIsBye() && match.getResult() == MatchResult.DRAW) {
+                TournamentPlayer tp = tournamentPlayerRepository.findById(
+                        new TournamentPlayerId(tournamentId, match.getWhitePlayer().getId()))
+                        .orElse(null);
+                if (tp != null) {
+                    tp.setScore(tp.getScore().add(new BigDecimal("0.5")));
+                    tournamentPlayerRepository.save(tp);
+                }
+            }
+        }
+
         // Update tournament state
         tournament.setCurrentRound(tournament.getCurrentRound() + 1);
         if (tournament.getStatus() == TournamentStatus.DRAFT) {
@@ -154,6 +218,10 @@ public class TournamentService {
     public Match submitMatchResult(UUID matchId, MatchResult result) {
         Match match = matchRepository.findById(matchId)
                 .orElseThrow(() -> new IllegalArgumentException("Match not found"));
+
+        if (match.getIsBye()) {
+            throw new IllegalStateException("Cannot modify bye match results.");
+        }
 
         if (match.getResult() != MatchResult.UNPLAYED) {
             // Rollback previous scores if result is being updated/edited

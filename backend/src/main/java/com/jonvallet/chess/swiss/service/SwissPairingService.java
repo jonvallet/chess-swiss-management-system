@@ -54,6 +54,13 @@ public class SwissPairingService {
         // Build list of active players for this round
         List<TournamentPlayer> activePlayers = new ArrayList<>(enrolledPlayers);
 
+        // Exclude players who already have a bye assigned for this round
+        Set<UUID> preAssignedByePlayers = allPastMatches.stream()
+                .filter(m -> m.getIsBye() && m.getRoundNumber() == nextRound)
+                .map(m -> m.getWhitePlayer().getId())
+                .collect(Collectors.toSet());
+        activePlayers.removeIf(tp -> preAssignedByePlayers.contains(tp.getPlayer().getId()));
+
         // 3. Handle Bye if odd number of players
         Match byeMatch = null;
         if (activePlayers.size() % 2 != 0) {
@@ -80,7 +87,7 @@ public class SwissPairingService {
                     .roundNumber(nextRound)
                     .whitePlayer(byeRecipient.getPlayer())
                     .blackPlayer(null)
-                    .result(MatchResult.WHITE_WIN) // Automatic 1 point for a bye
+                    .result(MatchResult.DRAW)
                     .isBye(true)
                     .build();
         }

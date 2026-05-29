@@ -96,6 +96,35 @@ const handleSubmitResult = async (matchId: string, result: 'WHITE_WIN' | 'BLACK_
   }
 }
 
+const assigningBye = ref<string | null>(null)
+
+const handleAssignBye = async (playerId: string) => {
+  if (!tournament.value) return
+  const nextRound = tournament.value.currentRound + 1
+  assigningBye.value = playerId
+  try {
+    await TournamentService.assignBye(tournamentId.value, playerId, nextRound)
+    await fetchData()
+  } catch (err: any) {
+    console.error('Error assigning bye:', err)
+    alert(err.response?.data || 'Could not assign bye. Please try again.')
+  } finally {
+    assigningBye.value = null
+  }
+}
+
+const playersWithByeNextRound = computed(() => {
+  if (!tournament.value) return new Set<string>()
+  const nextRound = tournament.value.currentRound + 1
+  const matches = roundMatches.value[nextRound] || []
+  return new Set(
+    matches
+      .filter(m => m.isBye)
+      .map(m => m.whitePlayer?.id)
+      .filter((id): id is string => !!id)
+  )
+})
+
 // Check if all matches in the active round are completed
 const isCurrentRoundCompleted = computed(() => {
   if (!tournament.value || tournament.value.currentRound === 0) return false
@@ -225,12 +254,12 @@ const handleCopyInviteLink = () => {
         <i class="pi pi-calendar mr-1.5"></i> Pairings & Rounds
       </button>
       <button 
-        v-if="tournament.status === 'DRAFT'"
+        v-if="tournament.status !== 'FINISHED'"
         class="py-4 px-6 font-semibold text-sm border-b-2 transition-all duration-150"
         :class="activeTab === 'players' ? 'border-amber-500 text-amber-600' : 'border-transparent text-slate-500 hover:text-slate-700'"
         @click="activeTab = 'players'"
       >
-        <i class="pi pi-user-plus mr-1.5"></i> Register Players ({{ tournamentPlayers.length }})
+        <i class="pi pi-user-plus mr-1.5"></i> Players & Byes ({{ tournamentPlayers.length }})
       </button>
     </div>
 
@@ -346,7 +375,7 @@ const handleCopyInviteLink = () => {
                 </span>
                 
                 <div v-if="match.isBye" class="text-xs text-green-600 bg-green-50 px-3 py-2 rounded-lg border border-green-150 font-semibold">
-                  <i class="pi pi-check mr-1"></i> BYE award of 1.0 point saved automatically.
+                  <i class="pi pi-check mr-1"></i> BYE award of 0.5 points saved automatically.
                 </div>
 
                 <div v-else class="grid grid-cols-3 gap-2">
@@ -381,24 +410,36 @@ const handleCopyInviteLink = () => {
         </div>
       </div>
 
-      <!-- 3. PLAYERS REGISTER PANEL -->
-      <div v-else-if="activeTab === 'players'" class="grid grid-cols-1 md:grid-cols-2 gap-8">
+      <!-- 3. PLAYERS & BYES PANEL -->
+      <div v-else-if="activeTab === 'players'" class="space-y-8">
         
-        <!-- Currently Registered List -->
-        <div class="bg-slate-50 p-6 rounded-xl border border-slate-200">
-          <h3 class="font-bold text-slate-800 mb-4 flex justify-between items-center">
-            <span>Enrolled Players</span>
-            <span class="bg-slate-200 text-slate-700 px-2.5 py-0.5 rounded-full text-xs font-semibold">
-              {{ tournamentPlayers.length }} Enrolled
-            </span>
+        <!-- Bye Assignment Section -->
+        <div v-if="tournament.status !== 'FINISHED' && tournament.currentRound < tournament.totalRounds" class="bg-amber-50 p-6 rounded-xl border border-amber-200">
+          <h3 class="font-bold text-slate-800 mb-2 flex items-center gap-2">
+            <i class="pi pi-pause-circle text-amber-600"></i>
+            Assign Bye for Round {{ tournament.currentRound + 1 }}
           </h3>
-          <div v-if="tournamentPlayers.length === 0" class="text-center py-12 text-slate-400">
-            <i class="pi pi-users text-3xl mb-2"></i>
-            <p class="text-xs">No players enrolled in this tournament draft yet.</p>
+          <p class="text-xs text-slate-600 mb-4">
+            Mark a player as unavailable for the next round. They will receive 0.5 points and be excluded from pairings.
+          </p>
+          
+          <div v-if="playersWithByeNextRound.size > 0" class="mb-4">
+            <span class="text-xs font-semibold text-slate-600 uppercase tracking-wider">Players with bye:</span>
+            <div class="flex flex-wrap gap-2 mt-2">
+              <span 
+                v-for="tp in tournamentPlayers.filter(tp => playersWithByeNextRound.has(tp.player.id))"
+                :key="tp.player.id"
+                class="bg-green-100 text-green-800 px-3 py-1.5 rounded-full text-xs font-semibold border border-green-200 flex items-center gap-1.5"
+              >
+                <i class="pi pi-check-circle"></i>
+                {{ tp.player.name }}
+              </span>
+            </div>
           </div>
-          <ul v-else class="space-y-2 max-h-[400px] overflow-y-auto pr-2">
-            <li 
-              v-for="tp in tournamentPlayers" 
+
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            <div 
+              v-for="tp in tournamentPlayers.filter(tp => !playersWithByeNextRound.has(tp.player.id))"
               :key="tp.player.id"
               class="bg-white px-4 py-3 rounded-lg border border-slate-200 flex justify-between items-center"
             >
@@ -406,37 +447,97 @@ const handleCopyInviteLink = () => {
                 <span class="font-semibold text-slate-700 text-sm">{{ tp.player.name }}</span>
                 <span class="text-xs text-slate-400 font-mono">({{ tp.player.rating }})</span>
               </div>
-            </li>
-          </ul>
+              <Button 
+                label="Give Bye" 
+                icon="pi pi-pause"
+                :loading="assigningBye === tp.player.id"
+                :disabled="assigningBye !== null"
+                class="bg-amber-500 hover:bg-amber-600 border-none text-slate-950 text-xs font-bold px-3 py-1.5 rounded"
+                @click="handleAssignBye(tp.player.id)"
+              />
+            </div>
+          </div>
         </div>
 
-        <!-- Available Players List -->
-        <div class="p-6 bg-white border border-slate-200 rounded-xl">
-          <h3 class="font-bold text-slate-800 mb-4">Add Players from Directory</h3>
-          <div v-if="allGlobalPlayers.length === 0" class="text-center py-12 text-slate-400">
-            <i class="pi pi-user-plus text-3xl mb-2"></i>
-            <p class="text-xs">All database players are enrolled, or there are no players in the global directory.</p>
-            <router-link to="/players" class="mt-3 inline-block text-xs font-bold text-amber-600 hover:underline">Go to Player Directory &rarr;</router-link>
+        <!-- Player Registration Section (only in DRAFT) -->
+        <div v-if="tournament.status === 'DRAFT'" class="grid grid-cols-1 md:grid-cols-2 gap-8">
+          
+          <!-- Currently Registered List -->
+          <div class="bg-slate-50 p-6 rounded-xl border border-slate-200">
+            <h3 class="font-bold text-slate-800 mb-4 flex justify-between items-center">
+              <span>Enrolled Players</span>
+              <span class="bg-slate-200 text-slate-700 px-2.5 py-0.5 rounded-full text-xs font-semibold">
+                {{ tournamentPlayers.length }} Enrolled
+              </span>
+            </h3>
+            <div v-if="tournamentPlayers.length === 0" class="text-center py-12 text-slate-400">
+              <i class="pi pi-users text-3xl mb-2"></i>
+              <p class="text-xs">No players enrolled in this tournament draft yet.</p>
+            </div>
+            <ul v-else class="space-y-2 max-h-[400px] overflow-y-auto pr-2">
+              <li 
+                v-for="tp in tournamentPlayers" 
+                :key="tp.player.id"
+                class="bg-white px-4 py-3 rounded-lg border border-slate-200 flex justify-between items-center"
+              >
+                <div class="flex items-center gap-2">
+                  <span class="font-semibold text-slate-700 text-sm">{{ tp.player.name }}</span>
+                  <span class="text-xs text-slate-400 font-mono">({{ tp.player.rating }})</span>
+                </div>
+              </li>
+            </ul>
           </div>
-          <ul v-else class="space-y-2 max-h-[400px] overflow-y-auto pr-2">
-            <li 
-              v-for="p in allGlobalPlayers" 
-              :key="p.id"
-              class="bg-slate-50 px-4 py-3 rounded-lg border border-slate-200 flex justify-between items-center"
+
+          <!-- Available Players List -->
+          <div class="p-6 bg-white border border-slate-200 rounded-xl">
+            <h3 class="font-bold text-slate-800 mb-4">Add Players from Directory</h3>
+            <div v-if="allGlobalPlayers.length === 0" class="text-center py-12 text-slate-400">
+              <i class="pi pi-user-plus text-3xl mb-2"></i>
+              <p class="text-xs">All database players are enrolled, or there are no players in the global directory.</p>
+              <router-link to="/players" class="mt-3 inline-block text-xs font-bold text-amber-600 hover:underline">Go to Player Directory &rarr;</router-link>
+            </div>
+            <ul v-else class="space-y-2 max-h-[400px] overflow-y-auto pr-2">
+              <li 
+                v-for="p in allGlobalPlayers" 
+                :key="p.id"
+                class="bg-slate-50 px-4 py-3 rounded-lg border border-slate-200 flex justify-between items-center"
+              >
+                <div class="flex items-center gap-2">
+                  <span class="font-semibold text-slate-700 text-sm">{{ p.name }}</span>
+                  <span class="text-xs text-slate-400 font-mono">({{ p.rating }})</span>
+                </div>
+                <Button 
+                  label="Enroll" 
+                  icon="pi pi-plus" 
+                  class="bg-amber-500 hover:bg-amber-600 border-none text-slate-950 text-xs font-bold px-3 py-1.5 rounded"
+                  @click="handleRegisterPlayer(p.id)"
+                />
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Message when tournament is in progress -->
+        <div v-else-if="tournament.status === 'IN_PROGRESS'" class="bg-slate-50 p-6 rounded-xl border border-slate-200">
+          <h3 class="font-bold text-slate-800 mb-2">Enrolled Players</h3>
+          <p class="text-xs text-slate-500 mb-4">Tournament is in progress. Player registration is closed.</p>
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            <div 
+              v-for="tp in tournamentPlayers"
+              :key="tp.player.id"
+              class="bg-white px-4 py-3 rounded-lg border border-slate-200 flex justify-between items-center"
             >
               <div class="flex items-center gap-2">
-                <span class="font-semibold text-slate-700 text-sm">{{ p.name }}</span>
-                <span class="text-xs text-slate-400 font-mono">({{ p.rating }})</span>
+                <span class="font-semibold text-slate-700 text-sm">{{ tp.player.name }}</span>
+                <span class="text-xs text-slate-400 font-mono">({{ tp.player.rating }})</span>
               </div>
-              <Button 
-                label="Enroll" 
-                icon="pi pi-plus" 
-                class="bg-amber-500 hover:bg-amber-600 border-none text-slate-950 text-xs font-bold px-3 py-1.5 rounded"
-                @click="handleRegisterPlayer(p.id)"
-              />
-            </li>
-          </ul>
+              <span class="text-xs font-bold text-amber-700 bg-amber-50 px-2 py-1 rounded border border-amber-200">
+                {{ tp.score }} pts
+              </span>
+            </div>
+          </div>
         </div>
+
       </div>
 
     </div>
