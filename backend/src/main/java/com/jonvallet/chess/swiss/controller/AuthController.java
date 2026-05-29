@@ -57,7 +57,7 @@ public class AuthController {
     public ResponseEntity<?> viewTournament(@PathVariable String code) {
         try {
             Tournament tournament = tournamentService.getTournamentByShareCode(code.toUpperCase().trim());
-            String token = jwtService.generateViewerToken(tournament.getId());
+            String token = jwtService.generateControllerToken(tournament.getId());
             return ResponseEntity.ok(new ViewTournamentResponse(token, tournament.getId()));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.notFound().build();

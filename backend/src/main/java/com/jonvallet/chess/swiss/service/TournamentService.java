@@ -111,6 +111,27 @@ public class TournamentService {
     }
 
     @Transactional
+    public TournamentPlayer createAndRegisterPlayer(UUID tournamentId, String name, Integer rating) {
+        Tournament tournament = tournamentRepository.findById(tournamentId)
+                .orElseThrow(() -> new IllegalArgumentException("Tournament not found"));
+
+        if (tournament.getStatus() != TournamentStatus.DRAFT) {
+            throw new IllegalStateException("Players can only be registered while tournament is in DRAFT status");
+        }
+
+        if (name == null || name.trim().isEmpty()) {
+            throw new IllegalArgumentException("Player name is required");
+        }
+
+        int playerRating = rating != null ? rating : 1200;
+
+        Player player = new Player(name.trim(), playerRating);
+        player = playerRepository.save(player);
+
+        return registerPlayer(tournamentId, player.getId());
+    }
+
+    @Transactional
     public Match assignBye(UUID tournamentId, UUID playerId, int roundNumber) {
         Tournament tournament = tournamentRepository.findById(tournamentId)
                 .orElseThrow(() -> new IllegalArgumentException("Tournament not found"));

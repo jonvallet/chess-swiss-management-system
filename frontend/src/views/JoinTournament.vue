@@ -24,7 +24,7 @@ const fetchAndJoin = async () => {
 
     const response = await AuthService.viewTournament(normalizedCode)
 
-    authStore.setAuth(response.token, 'VIEWER', undefined, response.tournamentId)
+    authStore.setAuth(response.token, 'CONTROLLER', undefined, response.tournamentId)
 
     router.replace(`/tournaments/${response.tournamentId}`)
   } catch (err) {
