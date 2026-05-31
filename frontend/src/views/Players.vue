@@ -112,7 +112,7 @@ onMounted(() => {
       v-model:visible="showAddDialog" 
       header="Create New Player" 
       :modal="true" 
-      class="w-full max-w-md bg-white border border-slate-200 rounded-xl overflow-hidden shadow-2xl"
+      class="w-full max-w-[calc(100vw-2rem)] md:max-w-md bg-white border border-slate-200 rounded-xl overflow-hidden shadow-2xl"
       contentClass="p-6 space-y-4"
     >
       <div class="flex flex-col gap-2">
