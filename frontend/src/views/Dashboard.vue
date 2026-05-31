@@ -253,7 +253,7 @@ onMounted(() => {
       v-model:visible="showCreateDialog" 
       header="Create New Tournament" 
       :modal="true" 
-      class="w-full max-w-md bg-white border border-slate-200 rounded-xl overflow-hidden shadow-2xl"
+      class="w-full max-w-[calc(100vw-2rem)] md:max-w-md bg-white border border-slate-200 rounded-xl overflow-hidden shadow-2xl"
       contentClass="p-6 space-y-4"
     >
       <div class="flex flex-col gap-2">
@@ -303,7 +303,7 @@ onMounted(() => {
       v-model:visible="showJoinDialog" 
       header="Join Tournament with Code" 
       :modal="true" 
-      class="w-full max-w-sm bg-white border border-slate-200 rounded-xl overflow-hidden shadow-2xl"
+      class="w-full max-w-[calc(100vw-2rem)] md:max-w-sm bg-white border border-slate-200 rounded-xl overflow-hidden shadow-2xl"
       contentClass="p-6 space-y-4"
     >
       <div class="flex flex-col gap-2">
@@ -342,7 +342,7 @@ onMounted(() => {
       v-model:visible="showDeleteDialog"
       header="Delete Tournament"
       :modal="true"
-      class="w-full max-w-md"
+      class="w-full max-w-[calc(100vw-2rem)] md:max-w-md"
     >
       <div class="space-y-4 p-2">
         <div class="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3">

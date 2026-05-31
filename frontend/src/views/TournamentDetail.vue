@@ -195,8 +195,8 @@ onMounted(() => {
   fetchData()
 })
 
-watch(tournamentId, () => {
-  fetchData()
+watch(tournamentId, (newId) => {
+  if (newId) fetchData()
 })
 
 const copied = ref(false)
@@ -377,7 +377,7 @@ const handleCopyInviteLink = () => {
       <!-- 2. PAIRINGS & ROUNDS PANEL -->
       <div v-else-if="activeTab === 'rounds'" class="space-y-6">
         <!-- Sub-tabs for each active/completed round -->
-        <div v-if="tournament.currentRound > 0" class="flex gap-2 border-b border-slate-100 pb-3 overflow-x-auto">
+        <div v-if="tournament.currentRound > 0" class="flex gap-2 border-b border-slate-100 pb-3 mb-1 overflow-x-auto">
           <button 
             v-for="r in tournament.currentRound" 
             :key="r"
@@ -425,7 +425,7 @@ const handleCopyInviteLink = () => {
 
                 <!-- Divider / VS -->
                 <div class="h-px bg-slate-200 relative my-2">
-                  <span class="absolute left-1/2 -translate-x-1/2 -translate-y-1/2 bg-slate-50 px-2 text-[10px] text-slate-400 font-bold uppercase tracking-widest">vs</span>
+                  <span class="absolute left-1/2 -translate-x-1/2 -translate-y-1/2 bg-slate-50 px-2 text-[10px] text-slate-400 font-bold uppercase tracking-widest z-10">vs</span>
                 </div>
 
                 <!-- Black Player / Bye -->
@@ -654,7 +654,7 @@ const handleCopyInviteLink = () => {
     v-model:visible="showCancelDialog"
     header="Cancel Round"
     :modal="true"
-    class="w-full max-w-md"
+      class="w-full max-w-[calc(100vw-2rem)] md:max-w-md"
   >
     <div class="space-y-4 p-2">
       <div class="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3">
@@ -687,7 +687,7 @@ const handleCopyInviteLink = () => {
     v-model:visible="showDeleteDialog"
     header="Delete Tournament"
     :modal="true"
-    class="w-full max-w-md"
+      class="w-full max-w-[calc(100vw-2rem)] md:max-w-md"
   >
     <div class="space-y-4 p-2">
       <div class="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3">

@@ -47,7 +47,7 @@ onMounted(() => {
       <p class="mt-2 text-slate-500">Retrieving tournament details...</p>
     </div>
 
-    <div v-else-if="errorMsg" class="max-w-md w-full bg-white p-8 rounded-2xl shadow-sm border border-slate-200 text-center space-y-6">
+    <div v-else-if="errorMsg" class="max-w-md w-full bg-white p-4 md:p-8 rounded-2xl shadow-sm border border-slate-200 text-center space-y-6">
       <div class="w-16 h-16 bg-rose-50 rounded-full flex items-center justify-center text-rose-500 mx-auto">
         <i class="pi pi-exclamation-triangle text-3xl"></i>
       </div>

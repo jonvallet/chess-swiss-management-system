@@ -39,7 +39,7 @@ const handleLogin = async () => {
 <template>
   <div class="min-h-screen bg-slate-100 flex items-center justify-center p-4">
     <div class="max-w-md w-full bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
-      <div class="bg-slate-950 text-white p-8 text-center">
+      <div class="bg-slate-950 text-white p-4 sm:p-6 md:p-8 text-center">
         <div class="w-16 h-16 bg-amber-500 rounded-full flex items-center justify-center mx-auto mb-4">
           <i class="pi pi-trophy text-3xl text-slate-950"></i>
         </div>
@@ -47,7 +47,7 @@ const handleLogin = async () => {
         <p class="text-sm text-slate-400 mt-1">Tournament Management System</p>
       </div>
 
-      <div class="p-8 space-y-6">
+      <div class="p-4 sm:p-6 md:p-8 space-y-6">
         <div class="text-center">
           <h2 class="text-lg font-bold text-slate-800">Admin Login</h2>
           <p class="text-xs text-slate-500 mt-1">Enter your credentials to access the dashboard.</p>
