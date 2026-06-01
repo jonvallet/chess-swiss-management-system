@@ -132,6 +132,23 @@ public class TournamentService {
     }
 
     @Transactional
+    public void removePlayer(UUID tournamentId, UUID playerId) {
+        Tournament tournament = tournamentRepository.findById(tournamentId)
+                .orElseThrow(() -> new IllegalArgumentException("Tournament not found"));
+
+        if (tournament.getStatus() != TournamentStatus.DRAFT) {
+            throw new IllegalStateException("Players can only be removed while tournament is in DRAFT status");
+        }
+
+        TournamentPlayerId id = new TournamentPlayerId(tournamentId, playerId);
+        if (!tournamentPlayerRepository.existsById(id)) {
+            throw new IllegalArgumentException("Player is not registered for this tournament");
+        }
+
+        tournamentPlayerRepository.deleteById(id);
+    }
+
+    @Transactional
     public Match assignBye(UUID tournamentId, UUID playerId, int roundNumber) {
         Tournament tournament = tournamentRepository.findById(tournamentId)
                 .orElseThrow(() -> new IllegalArgumentException("Tournament not found"));

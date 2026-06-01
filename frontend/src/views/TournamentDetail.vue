@@ -122,12 +122,27 @@ const handleCancelRound = async () => {
   }
 }
 
+const removingPlayer = ref<string | null>(null)
+
 const handleRegisterPlayer = async (playerId: string) => {
   try {
     await TournamentService.registerPlayer(tournamentId.value, playerId)
     await fetchData()
   } catch (err) {
     console.error('Error registering player:', err)
+  }
+}
+
+const handleRemovePlayer = async (playerId: string) => {
+  removingPlayer.value = playerId
+  try {
+    await TournamentService.removePlayer(tournamentId.value, playerId)
+    await fetchData()
+  } catch (err: any) {
+    console.error('Error removing player:', err)
+    alert(err.response?.data || 'Could not remove player. Please try again.')
+  } finally {
+    removingPlayer.value = null
   }
 }
 
@@ -556,12 +571,19 @@ const handleCopyInviteLink = () => {
               <li 
                 v-for="tp in tournamentPlayers" 
                 :key="tp.player.id"
-                class="bg-white px-4 py-3 rounded-lg border border-slate-200 flex justify-between items-center"
+                class="bg-white px-4 py-3 rounded-lg border border-slate-200 flex justify-between items-center group"
               >
                 <div class="flex items-center gap-2">
                   <span class="font-semibold text-slate-700 text-sm">{{ tp.player.name }}</span>
                   <span class="text-xs text-slate-400 font-mono">({{ tp.player.rating }})</span>
                 </div>
+                <Button
+                  icon="pi pi-times"
+                  :loading="removingPlayer === tp.player.id"
+                  :disabled="removingPlayer !== null"
+                  class="text-red-500 hover:text-white hover:bg-red-500 border border-red-200 bg-transparent w-7 h-7 rounded-full text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                  @click="handleRemovePlayer(tp.player.id)"
+                />
               </li>
             </ul>
           </div>
