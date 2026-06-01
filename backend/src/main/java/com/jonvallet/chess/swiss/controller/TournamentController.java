@@ -96,6 +96,23 @@ public class TournamentController {
         }
     }
 
+    @DeleteMapping("/tournaments/{id}/players/{playerId}")
+    public ResponseEntity<?> removePlayer(
+            @PathVariable UUID id,
+            @PathVariable UUID playerId) {
+        if (!tournamentAccessService.hasAccessToTournament(id)) {
+            return ResponseEntity.status(403).build();
+        }
+        try {
+            tournamentService.removePlayer(id, playerId);
+            return ResponseEntity.noContent().build();
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.notFound().build();
+        } catch (IllegalStateException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
     @PostMapping("/tournaments/{id}/players/create")
     public ResponseEntity<TournamentPlayer> createAndRegisterPlayer(
             @PathVariable UUID id,
