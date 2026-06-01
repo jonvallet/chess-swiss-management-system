@@ -81,6 +81,7 @@ const handleCreatePlayer = async () => {
     await TournamentService.createAndRegisterPlayer(tournamentId.value, newPlayerName.value.trim(), newPlayerRating.value || 1200)
     newPlayerName.value = ''
     newPlayerRating.value = 1200
+    showRegisterDialog.value = false
     await fetchData()
   } catch (err) {
     console.error('Error creating player:', err)
@@ -93,6 +94,7 @@ const showCancelDialog = ref(false)
 const cancellingRound = ref(false)
 const showDeleteDialog = ref(false)
 const deletingTournament = ref(false)
+const showRegisterDialog = ref(false)
 
 const handleDeleteTournament = async () => {
   deletingTournament.value = true
@@ -271,6 +273,15 @@ const handleCopyInviteLink = () => {
 
       <!-- Action Button -->
       <div class="w-full md:w-auto flex flex-col gap-2">
+        <!-- Draft Mode -> Register Player -->
+        <Button
+          v-if="authStore.canEdit && tournament.status === 'DRAFT'"
+          label="Register Player"
+          icon="pi pi-user-plus"
+          class="w-full md:w-auto bg-amber-500 hover:bg-amber-600 border-none text-slate-950 font-semibold px-5 py-3 rounded-lg text-sm shadow-md"
+          @click="showRegisterDialog = true"
+        />
+
         <!-- Draft Mode -> Generate Round 1 -->
         <Button 
           v-if="authStore.canEdit && tournament.status === 'DRAFT'"
@@ -733,6 +744,55 @@ const handleCopyInviteLink = () => {
           :loading="deletingTournament"
           class="flex-1 bg-red-500 hover:bg-red-600 border-none text-white font-bold px-5 py-2.5 rounded-lg text-sm shadow-md"
           @click="handleDeleteTournament"
+        />
+      </div>
+    </div>
+  </Dialog>
+
+  <!-- Register Player Dialog -->
+  <Dialog
+    v-model:visible="showRegisterDialog"
+    header="Register Player"
+    :modal="true"
+    class="w-full max-w-[calc(100vw-2rem)] md:max-w-md"
+  >
+    <div class="space-y-4 p-2">
+      <div class="flex flex-col gap-3">
+        <div>
+          <label class="block text-sm font-semibold text-slate-700 mb-1">Player Name</label>
+          <InputText
+            v-model="newPlayerName"
+            placeholder="Enter player name"
+            class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-amber-400"
+            @keyup.enter="handleCreatePlayer"
+          />
+        </div>
+        <div>
+          <label class="block text-sm font-semibold text-slate-700 mb-1">ELO Rating</label>
+          <InputNumber
+            v-model="newPlayerRating"
+            :min="100"
+            :max="3000"
+            placeholder="Rating"
+            inputClass="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-amber-400 font-mono"
+            class="w-full"
+          />
+        </div>
+      </div>
+
+      <div class="flex gap-2 pt-2">
+        <Button
+          label="Cancel"
+          class="flex-1 p-button-text text-slate-400 hover:text-slate-600 font-semibold py-2 rounded-lg text-sm"
+          @click="showRegisterDialog = false"
+        />
+        <Button
+          label="Register"
+          icon="pi pi-user-plus"
+          :loading="creatingPlayer"
+          :disabled="!newPlayerName.trim() || creatingPlayer"
+          class="flex-1 bg-amber-500 hover:bg-amber-600 border-none text-slate-950 font-bold px-5 py-2.5 rounded-lg text-sm shadow-md"
+          @click="handleCreatePlayer"
         />
       </div>
     </div>
