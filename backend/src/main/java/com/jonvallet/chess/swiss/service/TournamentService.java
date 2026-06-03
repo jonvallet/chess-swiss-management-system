@@ -87,8 +87,8 @@ public class TournamentService {
         Tournament tournament = tournamentRepository.findById(tournamentId)
                 .orElseThrow(() -> new IllegalArgumentException("Tournament not found"));
 
-        if (tournament.getStatus() != TournamentStatus.DRAFT) {
-            throw new IllegalStateException("Players can only be registered while tournament is in DRAFT status");
+        if (tournament.getStatus() == TournamentStatus.FINISHED) {
+            throw new IllegalStateException("Cannot register players in a finished tournament");
         }
 
         Player player = playerRepository.findById(playerId)
@@ -107,7 +107,13 @@ public class TournamentService {
                 .colorDifference(0)
                 .build();
 
-        return tournamentPlayerRepository.save(tp);
+        tp = tournamentPlayerRepository.save(tp);
+
+        if (tournament.getStatus() == TournamentStatus.IN_PROGRESS) {
+            assignLateEntryByes(tournament, tp);
+        }
+
+        return tp;
     }
 
     @Transactional
@@ -115,8 +121,8 @@ public class TournamentService {
         Tournament tournament = tournamentRepository.findById(tournamentId)
                 .orElseThrow(() -> new IllegalArgumentException("Tournament not found"));
 
-        if (tournament.getStatus() != TournamentStatus.DRAFT) {
-            throw new IllegalStateException("Players can only be registered while tournament is in DRAFT status");
+        if (tournament.getStatus() == TournamentStatus.FINISHED) {
+            throw new IllegalStateException("Cannot register players in a finished tournament");
         }
 
         if (name == null || name.trim().isEmpty()) {
@@ -197,6 +203,23 @@ public class TournamentService {
         byeMatch = matchRepository.save(byeMatch);
 
         return byeMatch;
+    }
+
+    private void assignLateEntryByes(Tournament tournament, TournamentPlayer tp) {
+        int roundsToAward = tournament.getCurrentRound();
+        for (int round = 1; round <= roundsToAward; round++) {
+            Match byeMatch = Match.builder()
+                    .tournament(tournament)
+                    .roundNumber(round)
+                    .whitePlayer(tp.getPlayer())
+                    .blackPlayer(null)
+                    .result(MatchResult.DRAW)
+                    .isBye(true)
+                    .build();
+            matchRepository.save(byeMatch);
+            tp.setScore(tp.getScore().add(new BigDecimal("0.5")));
+        }
+        tournamentPlayerRepository.save(tp);
     }
 
     @Transactional
