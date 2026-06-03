@@ -178,7 +178,7 @@ public class TournamentService {
 
         List<Match> nextRoundMatches = matchRepository.findByTournamentIdAndRoundNumber(tournamentId, roundNumber);
         boolean alreadyHasBye = nextRoundMatches.stream()
-                .anyMatch(m -> m.getIsBye() && m.getWhitePlayer().getId().equals(playerId));
+                .anyMatch(m -> m.getIsBye() && m.getWhitePlayer() != null && m.getWhitePlayer().getId().equals(playerId));
         if (alreadyHasBye) {
             throw new IllegalStateException("Player already has a bye for this round.");
         }
@@ -201,6 +201,12 @@ public class TournamentService {
                 .build();
 
         byeMatch = matchRepository.save(byeMatch);
+
+        TournamentPlayer tp = tournamentPlayerRepository.findById(tpId).orElse(null);
+        if (tp != null) {
+            tp.setScore(tp.getScore().add(new BigDecimal("0.5")));
+            tournamentPlayerRepository.save(tp);
+        }
 
         return byeMatch;
     }
@@ -360,39 +366,28 @@ public class TournamentService {
 
         match.setResult(result);
 
-        if (!match.getIsBye()) {
-            TournamentPlayer whiteTP = tournamentPlayerRepository.findById(
-                    new TournamentPlayerId(match.getTournament().getId(), match.getWhitePlayer().getId()))
-                    .orElseThrow(() -> new IllegalStateException("White player registration record missing"));
+        TournamentPlayer whiteTP = tournamentPlayerRepository.findById(
+                new TournamentPlayerId(match.getTournament().getId(), match.getWhitePlayer().getId()))
+                .orElseThrow(() -> new IllegalStateException("White player registration record missing"));
 
-            TournamentPlayer blackTP = tournamentPlayerRepository.findById(
-                    new TournamentPlayerId(match.getTournament().getId(), match.getBlackPlayer().getId()))
-                    .orElseThrow(() -> new IllegalStateException("Black player registration record missing"));
+        TournamentPlayer blackTP = tournamentPlayerRepository.findById(
+                new TournamentPlayerId(match.getTournament().getId(), match.getBlackPlayer().getId()))
+                .orElseThrow(() -> new IllegalStateException("Black player registration record missing"));
 
-            // Update scores & color differences
-            if (result == MatchResult.WHITE_WIN) {
-                whiteTP.setScore(whiteTP.getScore().add(BigDecimal.ONE));
-            } else if (result == MatchResult.BLACK_WIN) {
-                blackTP.setScore(blackTP.getScore().add(BigDecimal.ONE));
-            } else if (result == MatchResult.DRAW) {
-                whiteTP.setScore(whiteTP.getScore().add(new BigDecimal("0.5")));
-                blackTP.setScore(blackTP.getScore().add(new BigDecimal("0.5")));
-            }
-
-            whiteTP.setColorDifference(whiteTP.getColorDifference() + 1);
-            blackTP.setColorDifference(blackTP.getColorDifference() - 1);
-
-            tournamentPlayerRepository.save(whiteTP);
-            tournamentPlayerRepository.save(blackTP);
-        } else {
-            // Bye matches automatically award a point when created, but if we need to enforce score explicitly:
-            TournamentPlayer p = tournamentPlayerRepository.findById(
-                    new TournamentPlayerId(match.getTournament().getId(), match.getWhitePlayer().getId()))
-                    .orElseThrow(() -> new IllegalStateException("Player registration record missing"));
-            
-            p.setScore(p.getScore().add(BigDecimal.ONE));
-            tournamentPlayerRepository.save(p);
+        if (result == MatchResult.WHITE_WIN) {
+            whiteTP.setScore(whiteTP.getScore().add(new BigDecimal("1.0")));
+        } else if (result == MatchResult.BLACK_WIN) {
+            blackTP.setScore(blackTP.getScore().add(new BigDecimal("1.0")));
+        } else if (result == MatchResult.DRAW) {
+            whiteTP.setScore(whiteTP.getScore().add(new BigDecimal("0.5")));
+            blackTP.setScore(blackTP.getScore().add(new BigDecimal("0.5")));
         }
+
+        whiteTP.setColorDifference(whiteTP.getColorDifference() + 1);
+        blackTP.setColorDifference(blackTP.getColorDifference() - 1);
+
+        tournamentPlayerRepository.save(whiteTP);
+        tournamentPlayerRepository.save(blackTP);
 
         match = matchRepository.save(match);
 
@@ -414,9 +409,9 @@ public class TournamentService {
 
             if (whiteTP != null && blackTP != null) {
                 if (oldResult == MatchResult.WHITE_WIN) {
-                    whiteTP.setScore(whiteTP.getScore().subtract(BigDecimal.ONE));
+                    whiteTP.setScore(whiteTP.getScore().subtract(new BigDecimal("1.0")));
                 } else if (oldResult == MatchResult.BLACK_WIN) {
-                    blackTP.setScore(blackTP.getScore().subtract(BigDecimal.ONE));
+                    blackTP.setScore(blackTP.getScore().subtract(new BigDecimal("1.0")));
                 } else if (oldResult == MatchResult.DRAW) {
                     whiteTP.setScore(whiteTP.getScore().subtract(new BigDecimal("0.5")));
                     blackTP.setScore(blackTP.getScore().subtract(new BigDecimal("0.5")));
@@ -425,13 +420,6 @@ public class TournamentService {
                 blackTP.setColorDifference(blackTP.getColorDifference() + 1);
                 tournamentPlayerRepository.save(whiteTP);
                 tournamentPlayerRepository.save(blackTP);
-            }
-        } else {
-            TournamentPlayer p = tournamentPlayerRepository.findById(
-                    new TournamentPlayerId(match.getTournament().getId(), match.getWhitePlayer().getId())).orElse(null);
-            if (p != null) {
-                p.setScore(p.getScore().subtract(BigDecimal.ONE));
-                tournamentPlayerRepository.save(p);
             }
         }
     }

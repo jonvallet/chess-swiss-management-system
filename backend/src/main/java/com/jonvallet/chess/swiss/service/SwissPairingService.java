@@ -57,7 +57,8 @@ public class SwissPairingService {
         // Exclude players who already have a bye assigned for this round
         Set<UUID> preAssignedByePlayers = allPastMatches.stream()
                 .filter(m -> m.getIsBye() && m.getRoundNumber() == nextRound)
-                .map(m -> m.getWhitePlayer().getId())
+                .map(m -> m.getWhitePlayer() != null ? m.getWhitePlayer().getId() : null)
+                .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
         activePlayers.removeIf(tp -> preAssignedByePlayers.contains(tp.getPlayer().getId()));
 
@@ -198,9 +199,10 @@ public class SwissPairingService {
     private String getPlayerLastColors(UUID playerId, List<Match> allPastMatches) {
         return allPastMatches.stream()
                 .filter(m -> !m.getIsBye() && m.getResult() != MatchResult.UNPLAYED)
-                .filter(m -> m.getWhitePlayer().getId().equals(playerId) || m.getBlackPlayer().getId().equals(playerId))
+                .filter(m -> (m.getWhitePlayer() != null && playerId.equals(m.getWhitePlayer().getId())) ||
+                             (m.getBlackPlayer() != null && playerId.equals(m.getBlackPlayer().getId())))
                 .sorted(Comparator.comparing(Match::getRoundNumber))
-                .map(m -> m.getWhitePlayer().getId().equals(playerId) ? "W" : "B")
+                .map(m -> m.getWhitePlayer() != null && playerId.equals(m.getWhitePlayer().getId()) ? "W" : "B")
                 .collect(Collectors.joining());
     }
 
