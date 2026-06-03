@@ -56,8 +56,8 @@ const fetchData = async () => {
       activeRoundTab.value = 1
     }
 
-    // 5. Fetch all global players for registration (only if in DRAFT mode)
-    if (authStore.canEdit && tournament.value.status === 'DRAFT') {
+    // 5. Fetch all global players for registration
+    if (authStore.canEdit && (tournament.value.status === 'DRAFT' || tournament.value.status === 'IN_PROGRESS')) {
       const allPlayers = await PlayerService.getAll()
       // Filter out players already registered
       const registeredIds = new Set(tournamentPlayers.value.map(tp => tp.player.id))
@@ -563,9 +563,18 @@ const handleCopyInviteLink = () => {
           </div>
         </div>
 
-        <!-- Player Registration Section (only in DRAFT, admin only) -->
-        <div v-if="authStore.canEdit && tournament.status === 'DRAFT'" class="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <!-- Player Registration Section -->
+        <div v-if="authStore.canEdit && (tournament.status === 'DRAFT' || tournament.status === 'IN_PROGRESS')" class="grid grid-cols-1 md:grid-cols-2 gap-8">
           
+          <!-- Info banner for late registration -->
+          <div v-if="tournament.status === 'IN_PROGRESS'" class="col-span-full bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-start gap-3">
+            <i class="pi pi-info-circle text-blue-500 text-lg mt-0.5 shrink-0"></i>
+            <div class="text-sm text-blue-800">
+              <p class="font-semibold mb-1">Late registration</p>
+              <p>New players will automatically receive <strong>0.5 points</strong> for each round already played ({{ tournament.currentRound }} round{{ tournament.currentRound > 1 ? 's' : '' }}). They will be available for pairing in the next round.</p>
+            </div>
+          </div>
+
           <!-- Currently Registered List -->
           <div class="bg-slate-50 p-6 rounded-xl border border-slate-200">
             <h3 class="font-bold text-slate-800 mb-4 flex justify-between items-center">
@@ -576,7 +585,7 @@ const handleCopyInviteLink = () => {
             </h3>
             <div v-if="tournamentPlayers.length === 0" class="text-center py-12 text-slate-400">
               <i class="pi pi-users text-3xl mb-2"></i>
-              <p class="text-xs">No players enrolled in this tournament draft yet.</p>
+              <p class="text-xs">{{ tournament.status === 'DRAFT' ? 'No players enrolled in this tournament draft yet.' : 'No players enrolled in this tournament yet.' }}</p>
             </div>
             <ul v-else class="space-y-2 max-h-[400px] overflow-y-auto pr-2">
               <li 
@@ -587,8 +596,10 @@ const handleCopyInviteLink = () => {
                 <div class="flex items-center gap-2">
                   <span class="font-semibold text-slate-700 text-sm">{{ tp.player.name }}</span>
                   <span class="text-xs text-slate-400 font-mono">({{ tp.player.rating }})</span>
+                  <span v-if="tournament.status !== 'DRAFT'" class="text-xs font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">{{ tp.score }} pts</span>
                 </div>
                 <Button
+                  v-if="tournament.status === 'DRAFT'"
                   icon="pi pi-times"
                   :loading="removingPlayer === tp.player.id"
                   :disabled="removingPlayer !== null"
@@ -656,10 +667,10 @@ const handleCopyInviteLink = () => {
         </div>
       </div>
 
-      <!-- Message when tournament is in progress -->
+      <!-- Read-only player list for viewers during in progress -->
       <div v-else-if="tournament.status === 'IN_PROGRESS'" class="bg-slate-50 p-6 rounded-xl border border-slate-200">
           <h3 class="font-bold text-slate-800 mb-2">Enrolled Players</h3>
-          <p class="text-xs text-slate-500 mb-4">Tournament is in progress. Player registration is closed.</p>
+          <p class="text-xs text-slate-500 mb-4">{{ tournamentPlayers.length }} player{{ tournamentPlayers.length !== 1 ? 's' : '' }} enrolled.</p>
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             <div 
               v-for="tp in tournamentPlayers"
