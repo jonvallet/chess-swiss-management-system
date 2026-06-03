@@ -16,6 +16,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Objects;
 import java.util.UUID;
 
 @RestController
@@ -45,7 +46,7 @@ public class AuthController {
         String adminUsername = appProperties.getAdmin().getUsername();
         String adminPassword = appProperties.getAdmin().getPassword();
 
-        if (adminUsername.equals(request.getUsername()) && adminPassword.equals(request.getPassword())) {
+        if (Objects.equals(adminUsername, request.getUsername()) && Objects.equals(adminPassword, request.getPassword())) {
             String token = jwtService.generateAdminToken(adminUsername);
             return ResponseEntity.ok(new LoginResponse(token, "ADMIN"));
         }
