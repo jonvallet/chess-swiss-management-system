@@ -9,7 +9,8 @@ const authStore = useAuthStore()
 
 const navItems = [
   { name: 'Dashboard', path: '/', icon: 'pi pi-home' },
-  { name: 'Players Directory', path: '/players', icon: 'pi pi-users' }
+  { name: 'Players Directory', path: '/players', icon: 'pi pi-users' },
+  { name: 'Admin Users', path: '/users', icon: 'pi pi-shield' }
 ]
 
 const isActive = (path: string) => {
@@ -129,6 +130,7 @@ watch(isSidebarOpen, (open) => {
           <h1 class="text-xl font-bold text-slate-800">
             <template v-if="route.path === '/'">Tournaments Dashboard</template>
             <template v-else-if="route.path === '/players'">Players Directory</template>
+            <template v-else-if="route.path === '/users'">Admin Users</template>
             <template v-else>Tournament Details</template>
           </h1>
         </div>

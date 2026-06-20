@@ -12,6 +12,7 @@ import com.jonvallet.chess.swiss.repository.TournamentRepository;
 import com.jonvallet.chess.swiss.security.AppProperties;
 import com.jonvallet.chess.swiss.security.JwtService;
 import com.jonvallet.chess.swiss.service.TournamentService;
+import com.jonvallet.chess.swiss.service.UserService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -28,21 +29,32 @@ public class AuthController {
     private final TournamentRepository tournamentRepository;
     private final PlayerRepository playerRepository;
     private final TournamentService tournamentService;
+    private final UserService userService;
 
     public AuthController(AppProperties appProperties,
                           JwtService jwtService,
                           TournamentRepository tournamentRepository,
                           PlayerRepository playerRepository,
-                          TournamentService tournamentService) {
+                          TournamentService tournamentService,
+                          UserService userService) {
         this.appProperties = appProperties;
         this.jwtService = jwtService;
         this.tournamentRepository = tournamentRepository;
         this.playerRepository = playerRepository;
         this.tournamentService = tournamentService;
+        this.userService = userService;
     }
 
     @PostMapping("/auth/login")
     public ResponseEntity<?> login(@RequestBody LoginRequest request) {
+        // Check DB users first (BCrypt)
+        var userOpt = userService.authenticate(request.getUsername(), request.getPassword());
+        if (userOpt.isPresent()) {
+            String token = jwtService.generateAdminToken(userOpt.get().getUsername());
+            return ResponseEntity.ok(new LoginResponse(token, userOpt.get().getRole()));
+        }
+
+        // Fallback to config-based admin (for migration period)
         String adminUsername = appProperties.getAdmin().getUsername();
         String adminPassword = appProperties.getAdmin().getPassword();
 

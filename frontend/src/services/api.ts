@@ -88,6 +88,14 @@ export interface ViewTournamentResponse {
   tournamentId: string
 }
 
+export interface UserResponse {
+  id: string
+  username: string
+  role: string
+  createdAt: string
+  updatedAt: string
+}
+
 // API methods
 export const PlayerService = {
   getAll: () => api.get<Player[]>('/players').then(r => r.data),
@@ -134,6 +142,15 @@ export const TournamentService = {
     api.post<Match>(`/matches/${matchId}/result`, { result }).then(r => r.data),
   getStandings: (tournamentId: string) => 
     api.get<PlayerStanding[]>(`/tournaments/${tournamentId}/standings`).then(r => r.data)
+}
+
+export const AdminService = {
+  getUsers: () => api.get<UserResponse[]>('/admin/users').then(r => r.data),
+  createUser: (username: string, password: string) =>
+    api.post<UserResponse>('/admin/users', { username, password }).then(r => r.data),
+  updatePassword: (id: string, password: string) =>
+    api.put<UserResponse>(`/admin/users/${id}`, { password }).then(r => r.data),
+  deleteUser: (id: string) => api.delete(`/admin/users/${id}`).then(r => r.data)
 }
 
 export default api
