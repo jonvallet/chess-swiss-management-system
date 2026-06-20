@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import Dashboard from './views/Dashboard.vue'
 import Players from './views/Players.vue'
+import Users from './views/Users.vue'
 import TournamentDetail from './views/TournamentDetail.vue'
 import JoinTournament from './views/JoinTournament.vue'
 import Login from './views/Login.vue'
@@ -22,6 +23,12 @@ const routes = [
     path: '/players',
     name: 'Players',
     component: Players,
+    meta: { requiresAuth: true, requiresAdmin: true }
+  },
+  {
+    path: '/users',
+    name: 'Users',
+    component: Users,
     meta: { requiresAuth: true, requiresAdmin: true }
   },
   {
